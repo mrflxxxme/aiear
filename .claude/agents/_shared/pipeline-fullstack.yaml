@@ -1,0 +1,34 @@
+# Pipeline: full-stack (оба слоя — capture-pipeline, billing-flow, sync)
+# Выбирает planner, когда фаза трогает и app/, и backend/.
+name: pipeline-fullstack
+applies_when: "phase трогает оба слоя (напр. F1 capture: Android-сервис + backend STT-прокси)"
+sequence:
+  - role: planner
+    out: PLAN-<PHASE>.md (с разметкой fork-точек)
+  - fork:
+      branch_a:
+        - role: designer
+          optional: true
+          when: "spec содержит ui-spec:"
+        - role: android-engineer
+          out: код app/
+      branch_b:
+        - role: backend-engineer
+          out: код backend/
+  - join:
+      - role: reviewer
+        out: review (оба diff'а: android + backend чеклисты)
+        parallel_with: reviewer-security
+      - role: reviewer-security
+        pinned_model: opus
+  - role: verifier
+    out: end-to-end EARS (Android↔backend контракт) + device-reliability
+  - role: architect
+    out: AUDIT-<PHASE>.md (phase-close, 7 линз; особое внимание контракту слоёв)
+  - role: memory-curator
+    out: STATUS/JOURNAL/memory + AgentDB index + README refresh + PR
+parallelism:
+  - "android-engineer ∥ backend-engineer после fork"
+  - "reviewer ∥ reviewer-security на join"
+gate: "обычно tier 4 (затрагивает контракт/billing/нативное) → явный аппрув + ADR-линк"
+notes: "Контракт API между слоями фиксируется в spec до fork, чтобы ветки не разъехались. verifier проверяет именно стык."

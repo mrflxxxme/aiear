@@ -1,0 +1,21 @@
+# CI — Security (всегда активен; gitleaks работает даже без кода)
+name: ci-security
+on:
+  pull_request:
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Secret scan (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env: { GITLEAKS_LICENSE: "" }
+      - name: SAST (Semgrep)
+        if: ${{ hashFiles('app/**','backend/**') != '' }}
+        run: echo "TODO: semgrep --config auto (когда появится код)"
+      - name: Dep audit
+        if: ${{ hashFiles('backend/**') != '' }}
+        run: echo "TODO: pip-audit / npm audit"
+# Соответствие правилам безопасности (CLAUDE.md §3): нет секретов, ПД — только RF-облако.

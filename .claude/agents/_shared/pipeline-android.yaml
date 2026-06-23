@@ -1,0 +1,26 @@
+# Pipeline: только Android (UI / сервисы / нативное)
+# Выбирает planner, когда фаза трогает только app/.
+name: pipeline-android
+applies_when: "phase трогает только Android (UI, сервисы, BT/CDM/FGS), без backend-изменений"
+sequence:
+  - role: planner
+    out: PLAN-<PHASE>.md            # tasks + DAG + model_hint
+  - role: designer
+    optional: true
+    when: "spec содержит ui-spec:"
+    out: Compose-моки + ui-spec-уточнения
+  - role: android-engineer
+    out: код app/ + unit + Compose UI test
+  - role: reviewer
+    checklist: android
+    out: review.report | review.revision
+  - role: verifier
+    out: EARS как инструментальные тесты (Gradle Managed Devices → Firebase Test Lab) + device-reliability
+  - role: architect
+    out: AUDIT-<PHASE>.md (phase-close, 7 линз)
+  - role: memory-curator
+    out: STATUS/JOURNAL/memory + AgentDB index + README refresh + PR
+parallelism:
+  - "reviewer выполняется один (android-чеклист); reviewer-security подключается только если фаза трогает разрешения/PII/секреты"
+gate: "founder tier 3+ (новый экран/сервис = tier 3; нативный фон/разрешения = tier 4 + ADR)"
+notes: "Главный риск — OEM-фон. verifier обязан гонять на ≥2 OEM; при буксовке — escalation.native-stuck → native-spike-debugger."

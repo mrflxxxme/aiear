@@ -1,0 +1,28 @@
+# CI — Android (шаблон; подключить, когда появится app/)
+# Гейты пайплайна: lint → typecheck → unit → instrumented (Firebase Test Lab) → screenshot.
+name: ci-android
+on:
+  pull_request:
+    paths: ["app/**", "gradle/**", "*.gradle*", ".github/workflows/ci-android.yml"]
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    if: ${{ hashFiles('app/**') != '' }}   # активируется, когда появится app/
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "17" }
+      - name: Lint (ktlint + detekt)
+        run: ./gradlew ktlintCheck detekt
+      - name: Unit + coverage
+        run: ./gradlew testDebugUnitTest jacocoTestReport
+      - name: Compose screenshot tests
+        run: ./gradlew verifyPaparazziDebug || ./gradlew validateScreenshotTest
+      # Инструментальные тесты на матрице реальных устройств — Firebase Test Lab.
+      # Требует GCP-secrets (вне контекста агента). Подключить на Wave 0/MVP-0.
+      - name: Instrumented (Firebase Test Lab)
+        if: ${{ secrets.GCP_SA_KEY != '' }}
+        run: echo "TODO: gcloud firebase test android run (Gradle Managed Devices → FTL)"
+# Заметка: OEM-killer фон (Xiaomi/Honor) FTL покрывает не полностью —
+# физ-OEM sanity делает фаундер на wave-гейте (см. memory/android-oem.md).

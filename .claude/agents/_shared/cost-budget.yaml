@@ -1,0 +1,49 @@
+# AIEAR cost-budget — owner: founder
+# Митигирует: R-COST (перерасход токенов при Opus-дефолте).
+# Source-of-truth: этот файл. Числа — стартовые ORIION-дефолты, подтвердить (OPEN-QUESTIONS Q7).
+# Ревью: на каждом wave-gate.
+
+version: 1
+last_reviewed: 2026-06-23
+last_reviewed_by: founder
+review_trigger: wave-gate-transition
+
+dev_team:
+  description: "Внутренняя работа агентов (planner/impl/review/verify/audit/curator/architect/eval). Активна всегда."
+  per_task:
+    soft_cap_usd: 0.50      # пробитие → fallback на Sonnet (не-pinned роли)
+    hard_cap_usd: 2.00      # пробитие → пауза + аппрув фаундера
+    notes: "Ожидаемо $0.10–0.30/task (Opus, ~3500 out + 8000 in). Hard = 6x avg на retry-штормы."
+  per_day:
+    team_soft_cap_usd: 30
+    team_hard_cap_usd: 75
+  per_month:
+    team_kill_switch_usd: 500   # выше → policy-review фаундера, не тихий override
+  tier_fallback:
+    trigger:
+      - per_task_soft_cap_exceeded
+      - complexity_score_below: 0.3
+      - role_in: [reviewer, designer, evaluator, memory-curator]
+    fallback_model: claude-sonnet-4-6
+    never_fallback: [architect, planner, reviewer-security, verifier]   # pinned-Opus
+
+user_production:
+  description: "User-cells через LLM-gateway (реальный трафик). Активируется после MVP-1 launch."
+  status: dormant_until_mvp_1
+  per_request: { soft_cap_usd: null, hard_cap_usd: null }   # задать перед MVP-1
+  per_user_per_month: { soft_cap_usd: null, hard_cap_usd: null }
+  team_wide_per_month: { kill_switch_usd: null }
+  notes: "Себестоимость STT ≈ 39 ₽/час; per-request cap = ≤10% от цены платного действия."
+
+operational:
+  stagnation_kill_switch_minutes: 30   # dev-агенты; user-cells не имеют (см. session-timeout)
+
+telemetry:
+  provider: agentdb-cost-events   # claude-flow MCP cost-телеметрия (Q1 гибрид)
+  emit_events: [task_start, task_complete, cap_breach, fallback_triggered, stagnation_killed]
+  partition_by: [cost_source, role, phase]
+
+cost_review_cadence:
+  weekly_summary: true
+  gate_transition_required_review: true
+  founder_alert_threshold_pct_of_monthly_cap: 60
