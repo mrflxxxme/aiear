@@ -1,0 +1,42 @@
+# Secrets — НИКОГДА не коммитить (CLAUDE.md §3)
+.env
+.env.*
+!.env.example
+*.keystore
+*.jks
+**/google-services.json
+**/gcp-sa-key.json
+secrets/
+
+# Android
+*.apk
+*.aab
+.gradle/
+build/
+local.properties
+.cxx/
+captures/
+
+# Python / backend
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.coverage
+htmlcov/
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Agent runtime / память (durable-память коммитим; рантайм-кэш — нет)
+.agentdb/
+*.log
+.planning/_handoffs/**/*.tmp

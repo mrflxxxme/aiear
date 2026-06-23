@@ -1,0 +1,26 @@
+# Pipeline: только backend (API / DB / proxy / billing / sync)
+# Выбирает planner, когда фаза трогает только backend/.
+name: pipeline-backend
+applies_when: "phase трогает только backend (FastAPI-эндпоинт, БД, STT/LLM-прокси, billing, sync), без Android-изменений"
+sequence:
+  - role: planner
+    out: PLAN-<PHASE>.md
+  - role: backend-engineer
+    out: код backend/ + Pydantic-модели + pytest + миграции + self-run evidence (ADR-010)
+  - role: reviewer
+    checklist: backend
+    out: review.report | review.revision
+    parallel_with: reviewer-security
+  - role: reviewer-security
+    out: review.report (секреты/PII/ФЗ-152-242/billing/миграции)
+    pinned_model: opus
+  - role: verifier
+    out: EARS как тесты (pytest + integration) + контракт-проверки + live-gold + evidence-бандл (ADR-010)
+  - role: architect
+    out: AUDIT-<PHASE>.md (phase-close, 8 линз, вкл. live-gold/evidence)
+  - role: memory-curator
+    out: STATUS/JOURNAL/memory + AgentDB index + README refresh + PR
+parallelism:
+  - "reviewer ∥ reviewer-security всегда параллельно"
+gate: "founder tier 3+ (новый эндпоинт = tier 3; billing/миграции/PII = tier 4 + ADR)"
+notes: "Ключи STT/LLM/эквайера — только в env/CI-secrets. Миграции — проверка safety (squawk) до merge."

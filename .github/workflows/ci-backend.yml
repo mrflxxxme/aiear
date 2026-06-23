@@ -1,0 +1,25 @@
+# CI — Backend (шаблон; подключить, когда появится backend/)
+name: ci-backend
+on:
+  pull_request:
+    paths: ["backend/**", ".github/workflows/ci-backend.yml"]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    if: ${{ hashFiles('backend/**') != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Install
+        run: pip install -e "backend/.[dev]" || pip install -r backend/requirements-dev.txt
+      - name: Lint (ruff)
+        run: ruff check backend
+      - name: Type-check (mypy --strict)
+        run: mypy --strict backend
+      - name: Tests + coverage
+        run: pytest backend --cov=backend --cov-fail-under=70
+      - name: Migration safety (squawk)
+        run: echo "TODO: squawk on new migrations"
+# Ключи STT/LLM/эквайера — только в CI-secrets/env, никогда в коде (reviewer-security гейт).
