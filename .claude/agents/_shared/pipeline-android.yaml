@@ -10,14 +10,14 @@ sequence:
     when: "spec содержит ui-spec:"
     out: Compose-моки + ui-spec-уточнения
   - role: android-engineer
-    out: код app/ + unit + Compose UI test
+    out: код app/ + unit + Compose UI test + self-run evidence (ADR-010)
   - role: reviewer
     checklist: android
     out: review.report | review.revision
   - role: verifier
-    out: EARS как инструментальные тесты (Gradle Managed Devices → Firebase Test Lab) + device-reliability
+    out: EARS как инструментальные тесты (Gradle Managed Devices → Firebase Test Lab) + device-reliability + live-gold + evidence-бандл (ADR-010)
   - role: architect
-    out: AUDIT-<PHASE>.md (phase-close, 7 линз)
+    out: AUDIT-<PHASE>.md (phase-close, 8 линз, вкл. live-gold/evidence)
   - role: memory-curator
     out: STATUS/JOURNAL/memory + AgentDB index + README refresh + PR
 parallelism:

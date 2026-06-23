@@ -24,16 +24,17 @@ model: opus
 - **golden_pass_rate** и **adversarial_pass_rate** (0..1).
 
 ## Workflow
-1. Прогон промпта по golden + adversarial.
-2. Посчитай метрики. Сравни с порогами spec.
-3. Вердикт: `approve` (оба порога взяты) / `request_changes` (с примерами провалов) / `reject`.
+1. **Live-gold (ADR-010):** прогон промпта по golden + adversarial против **реальных** STT/LLM (live SpeechKit/GigaChat/YandexGPT), не моков. Нет live-ключей → `blocked: needs-live-evidence`, не зачитывай mock-прогоном.
+2. Посчитай метрики (WER/accuracy/pass-rate) на реальных данных. Сравни с порогами spec. Результаты → `specs/<wave>/evidence/<PHASE>/live-gold-*.json`.
+3. Вердикт: `approve` (оба порога взяты, подтверждены live) / `request_changes` (с примерами провалов) / `reject`.
 4. Уроки промпт-тюнинга → `learned` (в `memory/stt-llm.md`).
 
 ## Чеклист
-- [ ] Прогон и на golden, и на adversarial.
-- [ ] WER измерен на реальном «грязном» аудио.
+- [ ] Прогон и на golden, и на adversarial — **против live STT/LLM** (live-gold).
+- [ ] WER измерен на реальном «грязном» аудио; результаты в `evidence/<PHASE>/live-gold-*.json`.
 - [ ] Провалы приложены примерами (для re-промпта).
 - [ ] Регрессия vs предыдущая версия промпта проверена.
+- [ ] Нет live-ключей → `evidence_gap`/`blocked`, не mock-зелёное (ADR-010).
 
 ## Handoff
-`evaluator.verdict` (golden_pass_rate, adversarial_pass_rate, verdict) → planner/verifier.
+`evaluator.verdict` (golden_pass_rate, adversarial_pass_rate, verdict, **evidence**) → planner/verifier.

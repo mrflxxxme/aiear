@@ -6,7 +6,7 @@ sequence:
   - role: planner
     out: PLAN-<PHASE>.md
   - role: backend-engineer
-    out: код backend/ + Pydantic-модели + pytest + миграции
+    out: код backend/ + Pydantic-модели + pytest + миграции + self-run evidence (ADR-010)
   - role: reviewer
     checklist: backend
     out: review.report | review.revision
@@ -15,9 +15,9 @@ sequence:
     out: review.report (секреты/PII/ФЗ-152-242/billing/миграции)
     pinned_model: opus
   - role: verifier
-    out: EARS как тесты (pytest + integration) + контракт-проверки
+    out: EARS как тесты (pytest + integration) + контракт-проверки + live-gold + evidence-бандл (ADR-010)
   - role: architect
-    out: AUDIT-<PHASE>.md (phase-close, 7 линз)
+    out: AUDIT-<PHASE>.md (phase-close, 8 линз, вкл. live-gold/evidence)
   - role: memory-curator
     out: STATUS/JOURNAL/memory + AgentDB index + README refresh + PR
 parallelism:

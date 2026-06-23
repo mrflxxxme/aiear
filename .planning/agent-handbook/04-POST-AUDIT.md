@@ -4,7 +4,7 @@
 
 ## Уровень 1 — Phase-close audit (каждая фаза, обязательно)
 
-`architect` собирает `specs/<wave>/AUDIT-<PHASE>.md` из 7 линз. Источники — хендофы фазы, diff, тест/девайс-репорты `verifier`, находки ревьюеров.
+`architect` собирает `specs/<wave>/AUDIT-<PHASE>.md` из 8 линз. Источники — хендофы фазы, diff, тест/девайс-репорты + evidence-бандл `verifier`, находки ревьюеров.
 
 | # | Линза | Что проверяет | Источник |
 |---|---|---|---|
@@ -15,15 +15,18 @@
 | 5 | compliance | согласие на запись, квоты/овередж, чеки 54-ФЗ (где применимо) | reviewer-security |
 | 6 | **device-reliability** | нативная приёмка реально прошла на OEM-матрице (FTL + физ-OEM где требуется) | verifier |
 | 7 | **cost-audit** | токены/$ фазы по ролям vs `cost-budget.yaml`; не пробили ли cap | memory-curator (метрики) |
+| 8 | **live-gold/evidence** | воспроизводимый evidence на каждый EARS: self-run + live-gold (реальные сервисы/устройства) ИЛИ явный принятый gap (ADR-010) | verifier |
 
 **Вердикт:** `pass` / `pass-with-followups` (followups → OPEN-QUESTIONS или новые tasks) / `fail` → revision-loop ([`05-ESCALATION.md`](05-ESCALATION.md)).
+
+> **ADR-010:** линза live-gold/evidence — блокирующая. Нет воспроизводимого evidence на критерий → `fail` (или `pass-with-followups` только если `evidence_gap` явно принят фаундером).
 
 Шаблон вердикта — фронтматтер:
 ```yaml
 ---
 audit: MVP0-F1
 verdict: pass-with-followups
-lenses: { code: pass, security: pass, tests: pass, adr: pass, compliance: n/a, device: pass, cost: pass }
+lenses: { code: pass, security: pass, tests: pass, adr: pass, compliance: n/a, device: pass, live_gold: pass, cost: pass }
 followups: ["MVP0-F1-followup-xiaomi-retest"]
 findings_by_severity: { info: 2, minor: 1, major: 0, critical: 0 }
 ---

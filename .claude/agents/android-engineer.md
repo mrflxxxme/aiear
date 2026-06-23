@@ -26,18 +26,19 @@ model: opus
 1. Прочитай task + EARS, которые он закрывает.
 2. Реализуй минимально под EARS. Мелкие типизированные модули.
 3. Напиши unit + Compose UI test + (для нативного) инструментальный тест-набросок для verifier.
-4. Запусти локальные гейты: `ktlintCheck detekt testDebugUnitTest`.
-5. Эмить хендоф `code.commit` с cost + learned.
+4. **Self-run (ADR-010):** прогони `ktlintCheck detekt testDebugUnitTest` САМ, сохрани вывод в `specs/<wave>/evidence/<PHASE>/selftest-android.txt`. Не зелёное → чини до хендофа, не передавай непроверенное.
+5. Нативное → пометь для verifier на device-матрице (live-gold: реальные OEM через FTL + agent-device).
+6. Эмить хендоф `code.commit` с cost + learned + **evidence** (пути).
 
 ## Чеклист (само-проверка до хендофа)
 - [ ] Все EARS task'а реализованы и протестированы.
 - [ ] Нет запрещённых нативных путей.
 - [ ] Нет секретов/ключей в коде.
-- [ ] ktlint/detekt/unit зелёные локально.
-- [ ] Нативное поведение помечено для device-проверки verifier (какие OEM критичны).
+- [ ] **Self-run зелёный**, вывод приложен в `evidence/<PHASE>/selftest-android.txt` (ADR-010).
+- [ ] Нативное поведение помечено для device-проверки verifier (какие OEM критичны для live-gold).
 
 ## Handoff → `reviewer` (+ `reviewer-security` если разрешения/PII)
-`code.commit`: commit_sha, files_changed, tests_added, adr_refs, acceptance_refs, cost, learned, next.
+`code.commit`: commit_sha, files_changed, tests_added, adr_refs, acceptance_refs, cost, **evidence**, learned, next.
 
 ## Escalation
 Буксуешь на OEM/нативном >2 попыток → `escalation.native-stuck` к `native-spike-debugger` (не жги Opus в цикле).

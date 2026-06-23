@@ -20,7 +20,7 @@ deciders: [founder]
 - **Модели:** Opus-дефолт + Sonnet-fallback; pinned-Opus: security/verifier/architect/planner. Экономия токенов — от контекст-дисциплины + эфемерности + T0/T1-выноса механики.
 - **Хендофы:** лёгкие MD+YAML (не CloudEvents-36-defs).
 - **Память:** общая тегированная `memory/<domain>.md` + AgentDB-рекалл; single-writer memory-curator.
-- **Пост-аудит:** phase-close обязателен (7 линз) + adversarial wave-аудит.
+- **Пост-аудит:** phase-close обязателен (8 линз, вкл. live-gold/evidence — ADR-010) + adversarial wave-аудит.
 - **Контроль:** автономно до фаза-гейта + независимые автономные сессии; фаундер ревьюит гейты (тиры 1-5).
 - **Верификация:** Gradle Managed Devices + Firebase Test Lab + agent-device + 2–3 физ-OEM.
 

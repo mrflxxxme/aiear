@@ -32,6 +32,7 @@ specs/
   <wave>/<PHASE>.md        # spec фазы (EARS)
   <wave>/PLAN-<PHASE>.md   # план фазы (planner)
   <wave>/AUDIT-<PHASE>.md  # phase-close аудит
+  <wave>/evidence/<PHASE>/ # evidence-бандл (ADR-010): self-run, live-gold, FTL, coverage
 .claude/agents/           # native-субагенты (1 файл = 1 роль)
 app/                      # Android (Kotlin) — появится в MVP-0
 backend/                  # FastAPI — появится в MVP-0
@@ -81,7 +82,7 @@ deciders: [founder]
 | 4 | архитектура/security/billing/ФЗ-152-242/миграции/нативный фон | явный аппрув + ADR-линк |
 | 5 | хотфикс | аппрув в той же сессии |
 
-ИИ-агенты **не имеют merge-прерогативы** на tier 3+. Зелёный CI + аппрув ревьюеров — необходимо, но не достаточно.
+ИИ-агенты **не имеют merge-прерогативы** на tier 3+. Зелёный CI + аппрув ревьюеров + **evidence-бандл (ADR-010)** — необходимо, но не достаточно.
 
 ## 6. Хендоф-события (тип в YAML-поле `event`)
 

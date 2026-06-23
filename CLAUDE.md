@@ -20,7 +20,7 @@ Wave (роадмап + go/no-go-гейт)
        └─ Task (декомпозиция planner'а, исполняется субагентом)
 ```
 
-**Пайплайн фазы:** `planner` → (`designer`?) → `android-engineer` ∥ `backend-engineer` → `reviewer` ∥ `reviewer-security` → `verifier` → **phase-close аудит** (`architect`) → `memory-curator` → **фаундер аппрувит гейт** → PR merge.
+**Пайплайн фазы:** `planner` → (`designer`?) → `android-engineer` ∥ `backend-engineer` → `reviewer` ∥ `reviewer-security` → `verifier` (EARS-тесты + live-gold + evidence) → **phase-close аудит** (`architect`) → `memory-curator` → **фаундер аппрувит гейт** → PR merge.
 
 ### Ростер (11 ролей) и модель-роутинг
 
@@ -50,6 +50,7 @@ Wave (роадмап + go/no-go-гейт)
 - **Запрещённые нативные пути:** `BOOT_COMPLETED` mic-старт; AccessibilityService-автоматизация на Google Play; silent-audio Now Playing. См. ADR-002.
 - **Дисциплина контекста (рычаг токенов №1):** грузи только свой срез (см. [`01-CONTEXT-LOADING.md`](.planning/agent-handbook/01-CONTEXT-LOADING.md)). Не читай весь репозиторий «на всякий случай».
 - **Всегда пост-аудит:** фаза не закрывается без `AUDIT-REPORT.md` (см. [`04-POST-AUDIT.md`](.planning/agent-handbook/04-POST-AUDIT.md)).
+- **Evidence-backed автономность (ADR-010):** агент сам прогоняет тесты + **live-gold** (на реальных сервисах/устройствах, где возможно) **до** PR и прикладывает доказательства в `specs/<wave>/evidence/<PHASE>/`. «Зелёное по утверждению» запрещено; live невозможен → явный `evidence_gap`/`blocked`, не тихий скип. См. [`07-VERIFICATION-EVIDENCE.md`](.planning/agent-handbook/07-VERIFICATION-EVIDENCE.md).
 
 ## 4. Стек
 
@@ -64,7 +65,7 @@ Android: **Kotlin + Jetpack Compose + Gradle** (запиненный тулче�
 ruff check . && mypy --strict . && pytest
 ```
 
-ВСЕГДА прогоняй тесты после правок. ВСЕГДА проверяй, что сборка зелёная, до PR.
+ВСЕГДА прогоняй тесты **сам** после правок и прикладывай вывод (self-run, не «написал тесты»). ВСЕГДА проверяй, что сборка зелёная, до PR. AI-фазы — **live-gold** прогон против реальных STT/LLM, не моков. Канон — [`07-VERIFICATION-EVIDENCE.md`](.planning/agent-handbook/07-VERIFICATION-EVIDENCE.md).
 
 ## 6. Точка входа агента
 

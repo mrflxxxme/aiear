@@ -23,3 +23,13 @@
 **Улучшение над ORIION:** агенты — нативные одно-файловые `.claude/agents/<role>.md` вместо 5–7-файловых папок (одно чтение на спавн, дешевле).
 
 **Последствия:** Wave 0 — следующая (блокирующая). До старта кода — разовый ops-setup фаундера (см. STATUS «Следующее действие»).
+
+## 2026-06-24 — Регламент: evidence-backed автономность (ADR-010)
+
+**Что:** добавлено 11-е решение операционной модели. Агенты обязаны **сами** прогонять тесты + **live-gold** (golden/приёмочные сценарии против реальных сервисов/устройств — live STT/LLM, RuStore sandbox, FTL OEM-матрица) **до** PR и приносить воспроизводимые доказательства в `specs/<wave>/evidence/<PHASE>/`. «Зелёное по утверждению» запрещено; live невозможен → явный `evidence_gap`/`blocked`, не тихий mock-скип.
+
+**Почему:** фаундер требует полную, подтверждённую результатами автономность внутри фаз. Для EARAI mock-зелёное не закрывает главный риск (нативный фон/OEM, качество ru-STT/LLM).
+
+**Затронуто:** новый [ADR-010] + handbook [07-VERIFICATION-EVIDENCE]; правки CLAUDE §3/§5, conventions (evidence-путь), handoff-template (`evidence`/`evidence_gap` + `needs-live-evidence`), 04-POST-AUDIT (7→**8 линз**, +live-gold/evidence), 06-PR-WORKFLOW (evidence-prereq + секция Evidence + CI-чек), роли android/backend/verifier/evaluator (self-run + live-gold), 3 pipeline-шаблона, spec-шаблоны + specs/README + F2 (mock→live-gold).
+
+**Последствия:** PR не открывается без evidence-бандла. Live-прогоны жгут API/FTL — отдельная статья в cost-budget (Q7). Автономная сессия фазы обязана дойти до полного бандла перед PR.

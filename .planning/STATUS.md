@@ -1,7 +1,7 @@
 <!-- AUTO-MAINTAINED by memory-curator at every phase-close. Manual edits may be overwritten. -->
 # STATUS — роллинг-статус AIEAR
 
-**Обновлено:** 2026-06-23 · **Текущая волна:** Wave 0 (спайки риска, блокирующая) · **Активная фаза:** — (ожидает старта S1)
+**Обновлено:** 2026-06-24 · **Текущая волна:** Wave 0 (спайки риска, блокирующая) · **Активная фаза:** — (ожидает старта S1)
 
 ## Сводка волн
 
@@ -31,7 +31,8 @@
 |---|---|
 | `.planning/` спина (PROJECT/STATUS/JOURNAL/OQ) | ✅ |
 | `.claude/agents/` (11 ролей) | ✅ |
-| ADR-001..009 | ✅ |
+| ADR-001..010 | ✅ |
+| Регламент evidence-backed автономности (ADR-010, handbook 07) | ✅ |
 | Спеки Wave 0 (S1–S6) | ✅ |
 | Спеки MVP-0 (F1–F7) | ✅ |
 | CI (Android/backend/security) | ✅ шаблоны (не подключены к secrets) |

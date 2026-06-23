@@ -42,6 +42,12 @@ prd_refs: []                      # секции PRD, на которые опи
 - Instrumented (device-матрица, если нативное): …
 - (Если промпт/модель) golden + adversarial для evaluator: …
 
+## Evidence & live-gold plan (ADR-010)
+> Что агент прогонит САМ до PR и какое доказательство ляжет в `specs/<wave>/evidence/<PHASE>/`. См. [`07-VERIFICATION-EVIDENCE.md`](../../.planning/agent-handbook/07-VERIFICATION-EVIDENCE.md).
+- **Self-run:** какие команды (lint/typecheck/unit/integration) → `selftest-*.txt`.
+- **Live-gold:** какие сценарии против РЕАЛЬНЫХ сервисов/устройств (live STT/LLM, RuStore sandbox, FTL OEM-матрица) → `live-gold-*.json` / `ftl-runs.md`.
+- **Если live невозможен:** что объявляем `evidence_gap` (причина + что нужно: creds/device/sandbox).
+
 ## Data / privacy
 - Какие ПД трогаем; где хранятся (RF-облако, ADR-004); согласия.
 

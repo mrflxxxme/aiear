@@ -40,9 +40,14 @@ prd_refs: ["§8 MVP-0 F2", "§10.2"]
 - Очень длинная реплика → усечение/суммаризация с сохранением сырого текста.
 
 ## Test plan
-- Contract: `/v1/structure` (mock LLM + sandbox).
-- **Evaluator:** golden dataset (эталонные транскрипт→Thought) + adversarial; метрики classification accuracy + structure fidelity; бенчмарк GigaChat vs YandexGPT → решение Q1.
-- Regression: при смене версии промпта — golden-прогон обязателен.
+- Contract: `/v1/structure` (unit на mock LLM — только для быстрого цикла разработки).
+- **Live-gold (ADR-010):** evaluator гоняет golden + adversarial против **реальных** GigaChat/YandexGPT (не моков); метрики classification accuracy + structure fidelity на живой модели; бенчмарк GigaChat vs YandexGPT → решение Q1. Нет live-ключей → `evidence_gap`, не закрывать на mock.
+- Regression: при смене версии промпта — live-gold-прогон обязателен.
+
+## Evidence & live-gold plan (ADR-010)
+- **Self-run:** `ruff/mypy/pytest` бэка → `evidence/MVP0-F2/selftest-backend.txt`.
+- **Live-gold:** golden+adversarial против live GigaChat и YandexGPT → `evidence/MVP0-F2/live-gold-gigachat.json`, `live-gold-yandexgpt.json` (accuracy / structure-fidelity / бенчмарк / WER на стыке с STT).
+- **Gap:** нет ключей LLM → `evidence_gap: needs GigaChat/YandexGPT creds` + `blocked` до выдачи фаундером.
 
 ## Data / privacy
 Транскрипт → LLM в RF-облаке (ADR-004). Никаких зарубежных LLM (ADR-003).

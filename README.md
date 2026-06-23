@@ -11,7 +11,7 @@
 <!-- STATUS:BEGIN (авто-обновляется memory-curator из .planning/STATUS.md; руками не править) -->
 ## 📍 Текущий статус
 
-**Волна:** Wave 0 (спайки риска, блокирующая) · **Активная фаза:** — (ожидает старта S1) · **Обновлено:** 2026-06-23
+**Волна:** Wave 0 (спайки риска, блокирующая) · **Активная фаза:** — (ожидает старта S1) · **Обновлено:** 2026-06-24
 
 | Волна | Статус | Гейт |
 |---|---|---|
@@ -35,11 +35,11 @@ Wave (роадмап + go/no-go-гейт)
        └─ Task (декомпозиция planner'а → профильный субагент)
 ```
 
-**Пайплайн фазы:** `planner` → `android-engineer` ∥ `backend-engineer` → `reviewer` ∥ `reviewer-security` → `verifier` (EARS как тесты + девайс-петля) → **phase-аудит** (`architect`, 7 линз) → `memory-curator` → **фаундер аппрувит гейт** → merge.
+**Пайплайн фазы:** `planner` → `android-engineer` ∥ `backend-engineer` → `reviewer` ∥ `reviewer-security` → `verifier` (EARS-тесты + live-gold + evidence) → **phase-аудит** (`architect`, 8 линз) → `memory-curator` → **фаундер аппрувит гейт** → merge.
 
-Пайплайн прогоняет фазу **автономно** и возвращается на гейте; отдельные фазы могут идти независимыми автономными сессиями. Подробно — [`.planning/agent-handbook/`](.planning/agent-handbook/00-START-HERE.md).
+Пайплайн прогоняет фазу **автономно** и возвращается на гейте; отдельные фазы могут идти независимыми автономными сессиями. Автономность **подтверждается результатами** (ADR-010): фаза доходит до PR только с собранным evidence-бандлом — self-run тестов + **live-gold** на реальных сервисах/устройствах. Подробно — [`.planning/agent-handbook/`](.planning/agent-handbook/00-START-HERE.md).
 
-### Дизайн харнесса (10 зафиксированных решений)
+### Дизайн харнесса (11 зафиксированных решений)
 
 | # | Решение | Выбор |
 |---|---|---|
@@ -48,11 +48,12 @@ Wave (роадмап + go/no-go-гейт)
 | 3 | Модели | Opus-дефолт + Sonnet-fallback; pinned-Opus: security/verifier/architect/planner |
 | 4 | Хендофы | Лёгкие MD+YAML (не CloudEvents-36-defs) |
 | 5 | Память | Общая тегированная `memory/<domain>` + AgentDB-рекалл, single-writer |
-| 6 | Пост-аудит | Phase-close обязателен (7 линз) + adversarial на wave-гейтах |
-| 7 | Фазировка | 3 уровня Wave→Phase→Task; Wave-0 spike-шаблон; ADR-001..009 апфронт |
+| 6 | Пост-аудит | Phase-close обязателен (8 линз) + adversarial на wave-гейтах |
+| 7 | Фазировка | 3 уровня Wave→Phase→Task; Wave-0 spike-шаблон; ADR-001..010 апфронт |
 | 8 | Контроль | Автономно до фаза-гейта; фаундер ревьюит гейты (тиры 1-5) |
 | 9 | Скоуп bootstrap | Харнесс + Wave 0 + MVP-0 детально; поздние волны — стабы |
 | 10 | Доставка / язык | PR на ревью; русский + англ. тех-термины; README самообновляемый |
+| 11 | Автономность | **Evidence-backed** (ADR-010): self-run тестов + **live-gold** на реальных сервисах/устройствах до PR; «зелёное по утверждению» запрещено |
 
 **Чем эффективнее ORIION:** агенты — нативные **одно-файловые** (одно чтение на спавн), а не 5–7-файловые папки; эфемерный спавн вместо персистентных Opus; лёгкие хендофы; жёсткая контекст-дисциплина + cost-caps. См. [ADR-006](.planning/decisions/ADR-006-agentic-operating-model.md).
 
@@ -79,8 +80,8 @@ docs/                      # PRD + ресёрч (источник продукт
 .planning/
   PROJECT.md STATUS.md JOURNAL.md OPEN-QUESTIONS.md
   _meta/                   # conventions · glossary · stack
-  agent-handbook/          # 00..06 — как работает харнесс
-  decisions/               # ADR-001..009
+  agent-handbook/          # 00..07 — как работает харнесс (07 = verification & evidence)
+  decisions/               # ADR-001..010
   roadmap/                 # волны + гейты
   memory/                  # durable уроки (android-oem, stt-llm, cdm-bt, billing)
 .claude/agents/            # 11 native-субагентов + _shared (cost-budget, pipelines)
@@ -110,7 +111,8 @@ app/ backend/              # код — появится в MVP-0 (после Wa
 ## 📚 Ключевые документы
 
 - **Продукт:** [PRD v2.1](docs/EARAI-PRD.md) · ресёрч в [`docs/research/`](docs/research/)
-- **Решения:** [ADR-001..009](.planning/decisions/)
+- **Решения:** [ADR-001..010](.planning/decisions/)
+- **Верификация/evidence:** [07-VERIFICATION-EVIDENCE](.planning/agent-handbook/07-VERIFICATION-EVIDENCE.md) · [ADR-010](.planning/decisions/ADR-010-evidence-backed-autonomy.md)
 - **Операционная модель:** [agent-handbook](.planning/agent-handbook/00-START-HERE.md) · [ADR-006](.planning/decisions/ADR-006-agentic-operating-model.md)
 - **Открытые вопросы:** [OPEN-QUESTIONS](.planning/OPEN-QUESTIONS.md)
 

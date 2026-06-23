@@ -24,7 +24,7 @@
    verifier  (EARS-критерии как тесты + девайс-петля)
         │
         ▼
-   architect — phase-close AUDIT-REPORT (7 линз)   ← всегда, не пропускается
+   architect — phase-close AUDIT-REPORT (8 линз, вкл. live-gold/evidence)   ← всегда, не пропускается
         │
         ▼
    memory-curator — STATUS/JOURNAL/memory + индекс AgentDB + регенерит README

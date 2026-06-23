@@ -17,8 +17,10 @@
 | `adr_refs` | [id] | при impl | какие ADR соблюдены |
 | `acceptance_refs` | [id] | при verify | какие EARS закрыты |
 | `cost` | obj | при impl/review | `{model, tokens_in, tokens_out}` |
+| `evidence` | [path] | при impl/verify/eval | пути в `specs/<wave>/evidence/<PHASE>/` (self-run, live-gold, FTL, coverage) — ADR-010 |
+| `evidence_gap` | string | если live невозможен | причина + что нужно (creds/device/sandbox); **не тихий скип** |
 | `learned` | string | опц. | кандидат в память (решает curator) |
-| `blocker_type` | enum | при `blocked` | missing_dependency \| unclear_spec \| external_failure \| conflicting_review \| cost_cap_breach \| native_oem \| other |
+| `blocker_type` | enum | при `blocked` | missing_dependency \| unclear_spec \| external_failure \| conflicting_review \| cost_cap_breach \| native_oem \| needs-live-evidence \| other |
 | `next` | string | ✅ | что делать получателю |
 
 ## Канонический пример
@@ -38,6 +40,10 @@ deliverables:
 adr_refs: [ADR-005]
 acceptance_refs: [MVP1-M5-AC1, MVP1-M5-AC2]
 cost: { model: opus, tokens_in: 9100, tokens_out: 2700 }
+evidence:
+  - specs/mvp-1/evidence/MVP1-M5/selftest-backend.txt
+  - specs/mvp-1/evidence/MVP1-M5/live-gold-rustore-sandbox.json
+evidence_gap: "live-продление требует прод-merchant — followup; sandbox-рекуррент зелёный"
 learned: "RuStore Pay sandbox требует отдельный merchant-id на рекуррент — задокументировано."
 next: "security: проверить, что ключ эквайера не в коде; review: идемпотентность вебхука продления"
 ---
@@ -51,5 +57,6 @@ next: "security: проверить, что ключ эквайера не в к
 1. Есть все обязательные поля для данного event? нет → emit handoff.error
 2. status=blocked но нет blocker_type? → handoff.error
 3. deliverables существуют по путям? нет → handoff.error
-4. ок → начать работу, по завершении эмитить свой хендоф
+4. impl/verify/eval-хендоф без `evidence` и без `evidence_gap`? → возврат (review.revision) / handoff.error (ADR-010)
+5. ок → начать работу, по завершении эмитить свой хендоф
 ```

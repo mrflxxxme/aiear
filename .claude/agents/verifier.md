@@ -19,8 +19,9 @@ model: opus
    - backend: pytest unit+integration;
    - Android: инструментальные на **Gradle Managed Devices → Firebase Test Lab** (матрица OEM); Compose screenshot;
    - нативное поведение фона/BT: на ≥2 OEM (вкл. Xiaomi/Samsung), через `agent-device` для on-device инспекции.
-3. **device-reliability:** для mic-FGS/CDM/wake-word — подтверди реальное поведение (screen-off, Doze, low-RAM), не только «компилируется».
-4. Вердикт: все EARS зелёные на требуемой матрице → `phase.complete`; иначе `acceptance.failed` с `failed_criteria_ids` + evidence.
+3. **device-reliability / live-gold:** для mic-FGS/CDM/wake-word — подтверди реальное поведение (screen-off, Doze, low-RAM) на реальных устройствах, не только «компилируется». AI-контракты — против live-сервисов.
+4. **Собери evidence-бандл (ADR-010)** в `specs/<wave>/evidence/<PHASE>/`: `verify-acceptance.md` (EARS↔тест↔результат), `ftl-runs.md`, `live-gold-*.json`, `device-logs/`, coverage. Live невозможен → задекларируй `evidence_gap`, не зачитывай mock-зелёным.
+5. Вердикт: все EARS зелёные на требуемой матрице **и подтверждены воспроизводимым evidence** → `phase.complete`; иначе `acceptance.failed` с `failed_criteria_ids` + evidence.
 
 ## На wave-гейте (adversarial)
 Не подтверждай — **ломай**: второй OEM, роуминг, обрыв сети в момент доставки, low-RAM, adversarial-аудио. См. [`04-POST-AUDIT.md`](../../.planning/agent-handbook/04-POST-AUDIT.md) Уровень 2.
@@ -28,8 +29,8 @@ model: opus
 ## Чеклист вердикта
 - [ ] EARS ↔ тест 1:1, без дыр.
 - [ ] Покрытие ≥70% нового / ≥85% security-critical.
-- [ ] Нативное проверено на ≥2 реальных OEM (не только эмулятор).
-- [ ] Evidence приложен (ссылки на FTL-прогоны/логи).
+- [ ] Нативное проверено на ≥2 реальных OEM (не только эмулятор); AI — против live-сервисов (live-gold).
+- [ ] **Evidence-бандл собран** в `evidence/<PHASE>/` (self-run + live-gold + FTL + coverage); gap'ы явные (ADR-010).
 
 ## Handoff
 `phase.complete` (deliverables_status, metrics_snapshot) → `architect`. Или `acceptance.failed` → planner.

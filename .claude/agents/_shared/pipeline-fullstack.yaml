@@ -22,13 +22,13 @@ sequence:
       - role: reviewer-security
         pinned_model: opus
   - role: verifier
-    out: end-to-end EARS (Android↔backend контракт) + device-reliability
+    out: end-to-end EARS (Android↔backend контракт) + device-reliability + live-gold + evidence-бандл (ADR-010)
   - role: architect
-    out: AUDIT-<PHASE>.md (phase-close, 7 линз; особое внимание контракту слоёв)
+    out: AUDIT-<PHASE>.md (phase-close, 8 линз вкл. live-gold/evidence; особое внимание контракту слоёв)
   - role: memory-curator
     out: STATUS/JOURNAL/memory + AgentDB index + README refresh + PR
 parallelism:
   - "android-engineer ∥ backend-engineer после fork"
   - "reviewer ∥ reviewer-security на join"
 gate: "обычно tier 4 (затрагивает контракт/billing/нативное) → явный аппрув + ADR-линк"
-notes: "Контракт API между слоями фиксируется в spec до fork, чтобы ветки не разъехались. verifier проверяет именно стык."
+notes: "Контракт API между слоями фиксируется в spec до fork, чтобы ветки не разъехались. verifier проверяет именно стык. Имплементеры прикладывают self-run evidence до join (ADR-010)."

@@ -21,7 +21,7 @@ specs/
 1. Spec фазы готов и **аппрувнут фаундером** (tier 3+).
 2. `planner` читает spec → `PLAN-<PHASE>.md`.
 3. Пайплайн исполняет ([`02-PIPELINE.md`](../.planning/agent-handbook/02-PIPELINE.md)).
-4. `verifier` проверяет **каждый EARS-критерий** как тест.
+4. `verifier` **прогоняет** каждый EARS-критерий как тест + live-gold, собирает evidence-бандл (ADR-010).
 5. `architect` закрывает phase-аудитом; `memory-curator` обновляет состояние + PR.
 
 ## Правила написания
@@ -30,3 +30,4 @@ specs/
 - Каждый EARS-критерий получает id `<PHASE>-AC<n>` и обязан быть проверяем.
 - Указывай `tier`, `pipeline`, `deps`, `model_hint`-подсказки, `ui-spec:` (если UI).
 - Edge-cases и unhappy-path — обязательны (агент не должен их «придумывать»).
+- **Evidence & live-gold plan (ADR-010)** — обязателен: что прогоняется САМ до PR и какое доказательство (self-run + live-gold) ляжет в `specs/<wave>/evidence/<PHASE>/`. См. [`07-VERIFICATION-EVIDENCE.md`](../.planning/agent-handbook/07-VERIFICATION-EVIDENCE.md).

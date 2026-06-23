@@ -46,7 +46,9 @@
 | **Gate / гейт** | Точка остановки: phase-gate (аппрув фаундера tier 3+) или wave-gate (go/no-go по метрикам). |
 | **Handoff** | Лёгкий MD+YAML-артефакт передачи работы между ролями. |
 | **pinned-Opus** | Роль, которая никогда не падает на дешёвую модель (security, verifier, architect, planner). |
-| **phase-close аудит** | Обязательный `AUDIT-REPORT.md` при закрытии фазы (7 линз). |
+| **phase-close аудит** | Обязательный `AUDIT-REPORT.md` при закрытии фазы (8 линз, вкл. live-gold/evidence). |
+| **live-gold** | golden/приёмочные сценарии против РЕАЛЬНЫХ сервисов/устройств (live STT/LLM, RuStore sandbox, FTL OEM), не моков — даёт реальные WER/pass-rate/выживаемость (ADR-010). |
+| **evidence-бандл** | воспроизводимые доказательства прохождения в `specs/<wave>/evidence/<PHASE>/` (self-run, live-gold, FTL, coverage). Без него фаза не доходит до PR. |
 | **AgentDB** | Семантическая память (claude-flow MCP): рекалл прошлых решений/паттернов. |
 | **memory-curator** | Единственный писатель (single-writer) в STATUS/JOURNAL/memory + индекс AgentDB. |
 | **escalation valve** | Клапан эскалации: `native-spike-debugger` или фаундер при застревании. |
