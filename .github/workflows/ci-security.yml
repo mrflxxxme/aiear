@@ -13,9 +13,9 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env: { GITLEAKS_LICENSE: "" }
       - name: SAST (Semgrep)
-        if: ${{ hashFiles('app/**','backend/**') != '' }}
-        run: echo "TODO: semgrep --config auto (когда появится код)"
+        if: ${{ hashFiles('app/**', 'backend/**') != '' }}
+        run: 'echo "TODO: semgrep --config auto (когда появится код)"'
       - name: Dep audit
         if: ${{ hashFiles('backend/**') != '' }}
-        run: echo "TODO: pip-audit / npm audit"
+        run: 'echo "TODO: pip-audit / npm audit"'
 # Соответствие правилам безопасности (CLAUDE.md §3): нет секретов, ПД — только RF-облако.
