@@ -1,5 +1,7 @@
 # CI — Android (спайк S1: app/ есть; GH-раннер имеет Google-Maven egress).
 # Гейты: lint (ktlint+detekt) → unit → assemble (app + androidTest компилируется).
+# Этот workflow и есть green-build evidence для WAVE0-S1 (закрывает needs-google-maven-egress;
+# см. specs/wave-0/evidence/WAVE0-S1/ci-green.md). Сам device-прогон — у фаундера (needs-device).
 # Coverage (jacoco) / screenshot (paparazzi) / instrumented (FTL) — в F-фазах.
 name: ci-android
 on:

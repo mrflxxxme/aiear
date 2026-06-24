@@ -18,7 +18,7 @@
 
 | Spike | EARS-суть | Блокирующий? | Статус |
 |---|---|---|---|
-| S1 | mic-FGS переживает screen-off ≥60 мин | да | 🟡 PR-гейт · аудит `pass-with-followups` · код/тесты зелёные по доказательству (unit 7/7 незав.); **device-прогон + green-build — на фаундере** (2 evidence_gap) |
+| S1 | mic-FGS переживает screen-off ≥60 мин | да | 🟡 PR-гейт · аудит `pass-with-followups` · **CI зелёный** (lint/unit/assemble на раннере) → green-build gap закрыт; остаётся **device-прогон (Xiaomi) на фаундере** (1 evidence_gap) |
 | S2 | CDM-автозапуск по BT из фона | да | 🔜 |
 | S3 | Активация tile / media-button <1 сек | да | 🔜 |
 | S4 | RuStore Pay SDK sandbox: подписка+рекуррент | да | 🔜 |
@@ -43,7 +43,7 @@
 **Фаундер на гейте WAVE0-S1** (PR открыт, не смержен — tier 4):
 1. **Ратифицировать** 2 evidence_gap (`needs-device`, `needs-google-maven-egress`) + пины версий / `minSdk=34` / имя ветки (см. PR + `AUDIT-WAVE0-S1.md`).
 2. **Прогнать** `specs/wave-0/evidence/WAVE0-S1/run-on-device.sh` на ≥2 физ-OEM (**Xiaomi обяз.**), 60 мин screen-off + Doze → залить `device-logs/` (закрывает `needs-device` = реальный S1-GO).
-3. **Green-build**: пере-прогнать полный self-run на раннере с Google-Maven-egress (закрывает `needs-google-maven-egress`).
+3. ~~Green-build~~ ✅ **закрыто CI**: `ci-android` зелёный (lint+unit+assemble) на раннере — `needs-google-maven-egress` снят (см. `evidence/WAVE0-S1/ci-green.md`).
 4. Решение гейта: `merge / revise / abort`. S1-GO ещё **не** взят (device-доказательство pending).
 
 Затем: следующий спайк **WAVE0-S2** (CDM-автозапуск) автономной сессией.

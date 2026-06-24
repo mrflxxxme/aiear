@@ -7,11 +7,19 @@
 
 ---
 
-## Gap 1 — `needs-google-maven-egress` (NEW, blocks the green build in this sandbox)
+## Gap 1 — `needs-google-maven-egress` → ✅ RESOLVED via CI (2026-06-24)
 
-### What is missing
+**Update:** closed by GitHub Actions `ci-android`, which runs on a runner that CAN reach
+Google Maven (the block is only in the agent sandbox). The full self-run is **green on CI**:
+`ktlintCheck` + `detekt` + `testDebugUnitTest` (HeartbeatLogger seam) + `assembleDebug`
++ `assembleDebugAndroidTest` (instrumented test compiles) all pass — PR #2 head `2afb36c`,
+run `28090768093`. So «компилируется + lint/unit зелёные» теперь доказано на реальном
+тулчейне, не только структурно. The in-sandbox limitation below is retained for the record.
+
+### What was missing (in the agent sandbox only)
 The full Android build (`ktlintCheck`, `detekt`, `testDebugUnitTest`, `assembleDebug`,
-`assembleDebugAndroidTest`) could **not** be run to green in this session.
+`assembleDebugAndroidTest`) could **not** be run to green **in the cloud session** (it now runs
+green on the CI runner instead).
 
 ### Root cause (proven, not assumed)
 Every Android-specific artifact lives **only** on Google's Maven repo, and the org egress

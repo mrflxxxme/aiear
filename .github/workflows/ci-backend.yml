@@ -1,4 +1,5 @@
-# CI — Backend (шаблон; подключить, когда появится backend/)
+# CI — Backend (шаблон; подключить, когда появится backend/).
+# Пока backend/ нет — job зелёный (реальные шаги скипаются step-level hashFiles-гейтом).
 name: ci-backend
 on:
   pull_request:
