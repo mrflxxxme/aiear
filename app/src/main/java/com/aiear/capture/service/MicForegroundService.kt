@@ -29,8 +29,9 @@ import kotlin.coroutines.coroutineContext
  * [HEARTBEAT_PERIOD_MS] so a screen-off run can be checked for continuity.
  *
  * Concurrency: extends [LifecycleService] for a [lifecycleScope] that is cancelled in
- * onDestroy; the capture loop runs on [Dispatchers.IO]. START_STICKY asks the OS to restart
- * after a kill — a restart shows up as a heartbeat gap, which is the diagnostic signal.
+ * onDestroy; the capture loop runs on [Dispatchers.IO]. START_NOT_STICKY (see onStartCommand)
+ * keeps an OS/OEM kill terminal — it surfaces as the heartbeat log ending early, which is the
+ * survival signal the spike measures (auto-restart resilience is an F1 concern, not S1).
  *
  * ADR-002: the ONLY legal start is startForegroundService() from the foreground Activity.
  * No BOOT_COMPLETED, no AccessibilityService, no silent-audio.
@@ -84,9 +85,11 @@ class MicForegroundService : LifecycleService() {
     }
 
     /**
-     * The audio read loop. Reads from [AudioRecord] into [pcmFile] and beats ALIVE every
-     * [HEARTBEAT_PERIOD_MS]. Any read failure or exception emits a READ_ERR/EXC beat so an
-     * interruption is recorded, never silent (S1-AC3). Permission is gated in the Activity.
+     * The audio read loop. Reads from [AudioRecord] into [pcmFile] and every
+     * [HEARTBEAT_PERIOD_MS] beats ALIVE if audio bytes flowed in the interval, else STALL
+     * (alive but no capture — e.g. a muted/Doze-throttled mic). Any read failure or exception
+     * emits a READ_ERR/EXC beat so an interruption is recorded, never silent (S1-AC3).
+     * Permission is gated in the Activity.
      */
     @SuppressLint("MissingPermission")
     private suspend fun runCaptureLoop(
