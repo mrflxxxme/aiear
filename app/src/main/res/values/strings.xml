@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AIEAR S1 Spike</string>
+
+    <!-- Capture screen -->
+    <string name="capture_title">AIEAR — S1 mic-FGS spike</string>
+    <string name="capture_hint">Запусти захват, погаси экран, проверь heartbeat-лог.</string>
+    <string name="action_start">Старт захвата</string>
+    <string name="action_stop">Стоп захвата</string>
+    <string name="status_running">Захват активен</string>
+    <string name="status_idle">Захват остановлен</string>
+
+    <!-- FGS notification -->
+    <string name="notif_channel_name">Захват аудио</string>
+    <string name="notif_channel_desc">Постоянное уведомление активного mic-захвата.</string>
+    <string name="notif_title">AIEAR ловит мысли</string>
+    <string name="notif_text">Микрофон активен в фоне.</string>
+</resources>

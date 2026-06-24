@@ -1,0 +1,33 @@
+# Minimal detekt config — builds upon the bundled defaults (buildUponDefaultConfig=true
+# in app/build.gradle.kts). No baseline: the spike is small enough to stay clean.
+# Only deviations from defaults are listed here.
+
+build:
+  maxIssues: 0
+
+complexity:
+  LongMethod:
+    # mic-FGS capture loop + onStartCommand are intentionally a bit longer; keep
+    # them readable as single units rather than over-fragmenting native control flow.
+    threshold: 80
+  TooManyFunctions:
+    active: false
+
+style:
+  MagicNumber:
+    # Audio constants (16000 Hz, PCM bit sizes, 10s heartbeat) are inherently numeric
+    # and clearer inline; they are named via consts where it helps.
+    ignorePropertyDeclaration: true
+    ignoreCompanionObjectPropertyDeclaration: true
+  MaxLineLength:
+    maxLineLength: 120
+  ReturnCount:
+    active: false
+
+exceptions:
+  TooGenericExceptionCaught:
+    # The capture loop deliberately catches broad Throwable to log READ_ERR/EXC
+    # heartbeats (S1-AC3: an interruption must be recorded, never silent).
+    active: false
+  SwallowedException:
+    active: false

@@ -1,0 +1,66 @@
+# Version catalog — единственный источник версий (stack.md mandate).
+# Все плагины и зависимости приложения роутятся ТОЛЬКО отсюда.
+# Пины заданы task'ом WAVE0-S1; отклонения см. evidence/WAVE0-S1/selftest-android.txt.
+
+[versions]
+# --- Build toolchain ---
+agp = "8.7.3"                 # Android Gradle Plugin
+kotlin = "2.0.21"             # Kotlin (нужен kotlin.plugin.compose для Compose Compiler)
+ktlintPlugin = "12.1.1"       # org.jlleitschuh.gradle.ktlint
+detekt = "1.23.7"             # io.gitlab.arturbosch.detekt
+
+# --- AndroidX core / lifecycle / activity ---
+coreKtx = "1.13.1"
+lifecycle = "2.8.7"           # lifecycle-runtime-ktx + lifecycle-service (FGS lifecycle)
+activityCompose = "1.9.3"
+
+# --- Compose ---
+composeBom = "2024.12.01"     # Compose BOM — версии compose-артефактов берутся из BOM
+
+# --- Coroutines (AudioRecord-цикл сервиса) ---
+coroutines = "1.9.0"
+
+# --- Test (JVM unit) ---
+junit = "4.13.2"
+
+# --- Test (instrumented / androidTest) ---
+androidxTestRunner = "1.6.2"
+androidxTestRules = "1.6.1"
+androidxTestExtJunit = "1.2.1"
+uiautomator = "2.3.0"
+
+[libraries]
+# --- AndroidX runtime ---
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
+androidx-lifecycle-service = { group = "androidx.lifecycle", name = "lifecycle-service", version.ref = "lifecycle" }
+androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+
+# --- Compose (через BOM, без явных версий) ---
+androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
+androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }
+androidx-compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
+androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
+androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
+androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
+androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+
+# --- Coroutines ---
+kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+
+# --- JVM unit test ---
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+
+# --- Instrumented test ---
+androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTestRunner" }
+androidx-test-rules = { group = "androidx.test", name = "rules", version.ref = "androidxTestRules" }
+androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestExtJunit" }
+androidx-test-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", version.ref = "uiautomator" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlintPlugin" }
+detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
