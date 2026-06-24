@@ -195,9 +195,11 @@ class MicFgsSurvivalTest {
         const val BYTES_PER_SEC = 32_000L
         const val MILLIS_PER_SEC = 1_000L
         const val PERCENT = 100L
+
         // Require >= this % of nominal bytes: conservative vs OEM throttle, but a muted mic
         // (~0 bytes) fails it.
         const val MIN_CAPTURE_PERCENT = 25L
+
         // The last beat may trail the deadline by up to one poll interval + a beat period.
         const val EARLY_END_TOLERANCE_MS = 45_000L
     }
