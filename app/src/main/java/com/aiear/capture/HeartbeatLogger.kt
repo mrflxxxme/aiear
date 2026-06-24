@@ -37,7 +37,11 @@ class HeartbeatLogger(
 
     /** Capture states a beat can report. */
     enum class State {
+        /** Audio bytes were actually captured during the last interval. */
         ALIVE,
+
+        /** Service alive but NO audio bytes captured in the interval (muted/Doze-throttled mic). */
+        STALL,
         READ_ERR,
         EXC,
         STOPPED,
@@ -70,6 +74,22 @@ class HeartbeatLogger(
                 if (delta > max) max = delta
             }
             return max
+        }
+
+        /**
+         * Worst within-session gap across ALL sessions. Each inner list is one session's
+         * timestamps (one `heartbeat_<session>.log` file). Gaps are computed PER SESSION and
+         * never across sessions — a kill+restart resets `t=` to ~0, and merging the two axes
+         * would hide the kill behind a small cross-session delta (the exact false-PASS the S1
+         * spike must avoid). Caller treats >1 session as a kill independently of this value.
+         */
+        fun maxGapWithinSessions(sessions: List<List<Long>>): Long {
+            var worst = 0L
+            for (session in sessions) {
+                val gap = maxGapMs(session)
+                if (gap > worst) worst = gap
+            }
+            return worst
         }
     }
 }

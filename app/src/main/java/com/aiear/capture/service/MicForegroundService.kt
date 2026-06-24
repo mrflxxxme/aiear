@@ -53,13 +53,20 @@ class MicForegroundService : LifecycleService() {
             }
             else -> Log.w(HeartbeatLogger.TAG, "unknown action: ${intent?.action}")
         }
-        // Recreate-and-resume after an OS kill; the resulting gap is intentionally visible.
-        return START_STICKY
+        // START_NOT_STICKY for the spike: an OS/OEM kill is TERMINAL and must stay visible as
+        // the heartbeat log ending early — we are measuring *continuous* survival, not auto-
+        // restart resilience. Sticky redelivery (null intent) would land in `else` without re-
+        // promoting to foreground (FGS-did-not-start crash) and would muddy a kill with a
+        // restart; resilience is an F1 concern, not S1.
+        return START_NOT_STICKY
     }
 
     private fun startCapture() {
         if (captureJob?.isActive == true) return
         session = SystemClock.elapsedRealtime().toString()
+
+        // Defensive: guarantee the channel exists even if Application.onCreate ordering changes.
+        NotificationHelper.ensureChannel(this)
 
         // S1-AC2: promote to foreground with the microphone type BEFORE touching AudioRecord.
         ServiceCompat.startForeground(
@@ -109,19 +116,31 @@ class MicForegroundService : LifecycleService() {
             }
             recorder.startRecording()
             val buffer = ByteArray(bufferSize)
+            var bytesThisInterval = 0L
             pcmFile.outputStream().buffered().use { out ->
                 while (coroutineContext.isActive) {
                     val read = recorder.read(buffer, 0, buffer.size)
                     if (read > 0) {
                         out.write(buffer, 0, read)
                         totalBytes += read
+                        bytesThisInterval += read
                     } else if (read < 0) {
                         // Negative return == AudioRecord error code: record it, keep looping.
                         heartbeat.beat(HeartbeatLogger.State.READ_ERR, totalBytes)
                     }
                     val now = SystemClock.elapsedRealtime()
                     if (now - lastBeat >= HEARTBEAT_PERIOD_MS) {
-                        heartbeat.beat(HeartbeatLogger.State.ALIVE, totalBytes)
+                        // ALIVE only if audio actually flowed this interval; a service that is
+                        // alive but captured 0 bytes (muted/Doze-throttled mic) beats STALL, so
+                        // S1-AC1 cannot be passed by mere service liveness without audio.
+                        val state =
+                            if (bytesThisInterval > 0L) {
+                                HeartbeatLogger.State.ALIVE
+                            } else {
+                                HeartbeatLogger.State.STALL
+                            }
+                        heartbeat.beat(state, totalBytes)
+                        bytesThisInterval = 0L
                         lastBeat = now
                         out.flush()
                     }

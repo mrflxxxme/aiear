@@ -3,6 +3,12 @@
 Closes `needs-device`. Run on each phone, fill the result row, drop `device-logs/<dev>/` into the PR.
 **GO = S1-AC1 green (max heartbeat gap ≤ 15 000 ms over ≥60 min screen-off) on ≥2 OEM — Xiaomi MANDATORY.**
 
+## Precondition (read first)
+**Every device MUST run Android 14+ (API 34).** The build is `minSdk = 34`, so an Android 13
+(or older) phone — including an older Redmi/Samsung — will **fail to install**. That is a
+precondition failure, NOT a service kill; don't record it as an S1-AC1 fail. Check
+`adb shell getprop ro.build.version.sdk` ≥ 34 before running.
+
 ## Per-device procedure
 1. Enable Developer options + USB debugging; connect; `adb devices` shows it.
 2. Install the debug build: `./gradlew :app:installDebug` (or `adb install app-debug.apk`).

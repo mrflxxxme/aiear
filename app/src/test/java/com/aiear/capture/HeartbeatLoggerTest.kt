@@ -43,4 +43,22 @@ class HeartbeatLoggerTest {
     fun maxGapMs_singletonIsZero() {
         assertEquals(0L, HeartbeatLogger.maxGapMs(listOf(42_000L)))
     }
+
+    @Test
+    fun maxGapWithinSessions_reportsWorstInternalGap_notCrossSessionBlend() {
+        // Session A has a 40 s internal break; session B is a kill+restart (t= back to ~0).
+        // A naive cross-session sort would be [0,10k,10k,20k,50k] -> max delta 30k, HIDING
+        // A's real 40 k break. Per-session analysis must report A's 40 000 ms.
+        val sessionA = listOf(0L, 10_000L, 50_000L) // 40 s gap = the kill we hunt
+        val sessionB = listOf(0L, 10_000L, 20_000L) // clean, but t= restarted
+        assertEquals(
+            40_000L,
+            HeartbeatLogger.maxGapWithinSessions(listOf(sessionA, sessionB)),
+        )
+    }
+
+    @Test
+    fun maxGapWithinSessions_emptyIsZero() {
+        assertEquals(0L, HeartbeatLogger.maxGapWithinSessions(emptyList()))
+    }
 }

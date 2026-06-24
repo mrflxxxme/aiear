@@ -7,16 +7,24 @@
 > артефакту с честным статусом: что доказано в песочнице vs что вынесено на устройство фаундера.
 
 ## Independent verifier re-run (не доверяю отчёту имплементера — перепроверено)
-Чистая комната: извлёк **точные** тела `HeartbeatLogger.format()`/`maxGapMs()` из
-`app/src/main/.../HeartbeatLogger.kt` + **точные** ассерты из `app/src/test/.../HeartbeatLoggerTest.kt`,
+Чистая комната: извлёк **точные** тела `HeartbeatLogger.format()`/`maxGapMs()`/`maxGapWithinSessions()`
+из `app/src/main/.../HeartbeatLogger.kt` + **точные** ассерты из `app/src/test/.../HeartbeatLoggerTest.kt`,
 скомпилировал `kotlinc 2.0.21` (K2JVMCompiler), прогнал на `JUnit 4.13.2` (Maven Central):
 
 ```
-=== compile (kotlinc 2.0.21) ===  com/aiear/capture/HeartbeatSeam.class + HeartbeatSeamTest.class
-=== run (JUnitCore) ===           JUnit 4.13.2 · ..... · OK (5 tests)
+=== run (JUnitCore) ===  JUnit 4.13.2 · ....... · OK (7 tests)
 ```
-→ **5/5 OK** воспроизведено независимо. Детектор непрерывности (`maxGapMs`) ловит разрыв
-(`[0,10k,20k,60k,70k]→40000`), пустой/единичный → 0, формат строки точный/greppable.
+→ **7/7 OK** воспроизведено независимо (5 исходных + 2 на per-session-фикс). Детектор непрерывности
+ловит разрыв, пустой/единичный → 0; **per-session** `maxGapWithinSessions` не смешивает kill+restart
+(t= сброс) в малую дельту. Полный лог — `harden-rerun.txt`.
+
+## Post-audit hardening (revision loop — AUDIT нашёл 4 major false-PASS)
+Архитектор-аудит выявил, что девайс-харнесс мог дать **ложный green**. Исправлено в этой сессии и
+ре-верифицировано механически (`harden-rerun.txt`): START_NOT_STICKY (kill=терминальный); STALL-beat
++ ассерт роста PCM-байт (мьют-микрофон не пройдёт); per-session-парсинг + детект restart/early-end;
+`run-on-device.sh` **fail-closed** (нет лога/reset/early-end → ненулевой код); AC2 — наш канал + во
+время screen-off; minSdk-precondition в чек-лист. Инструмент теперь не лжёт; сам device-прогон —
+по-прежнему deferred (`needs-device`).
 
 ## EARS ↔ тест/артефакт
 

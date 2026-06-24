@@ -66,56 +66,100 @@ class MicFgsSurvivalTest {
             shell("dumpsys deviceidle force-idle")
         }
 
-        // Hold for the configured duration, periodically re-reading the heartbeat file so a
-        // mid-run break is captured even if the file is later truncated by an OEM killer.
+        // Hold for the configured duration. While the screen is OFF, sample the FGS
+        // notification — S1-AC2 must hold DURING screen-off, not merely after wake.
         val deadline = System.currentTimeMillis() + SpikeTestConfig.totalMs
-        var latestTimestamps: List<Long> = emptyList()
+        var notifSeenDuringScreenOff = false
         while (System.currentTimeMillis() < deadline) {
             Thread.sleep(POLL_INTERVAL_MS)
-            latestTimestamps = readHeartbeatTimestamps()
+            if (micNotificationPresent()) notifSeenDuringScreenOff = true
         }
 
-        // Wake + leave Doze before asserting (cleanup also does this defensively).
+        // Wake + leave Doze before final assertions (cleanup also does this defensively).
         if (SpikeTestConfig.forceDoze) {
             shell("dumpsys deviceidle unforce")
         }
         shell("input keyevent KEYCODE_WAKEUP")
 
-        val timestamps = readHeartbeatTimestamps().ifEmpty { latestTimestamps }
+        val sessions = readSessions()
+        val beats = sessions.sumOf { it.size }
         assertTrue(
-            "No heartbeats recorded at all — capture never produced liveness output.",
-            timestamps.size >= MIN_EXPECTED_BEATS,
+            "No heartbeats recorded at all — capture never produced liveness output " +
+                "(permissions? MIUI autostart? run-as blocked?).",
+            beats >= MIN_EXPECTED_BEATS,
         )
 
-        val maxGap = HeartbeatLogger.maxGapMs(timestamps)
-        val breakAt = locateBreak(timestamps)
+        // Under START_NOT_STICKY a kill is TERMINAL: more than one session file means the
+        // service died and was relaunched — a survival FAILURE. Gaps are computed PER SESSION
+        // (never a cross-session sort), so a kill cannot hide behind a small blended delta.
         assertTrue(
-            "Heartbeat continuity broken: maxGap=${maxGap}ms exceeds " +
-                "${SpikeTestConfig.MAX_ALLOWED_GAP_MS}ms (allowed). Break near t=${breakAt}ms. " +
-                "Beats=${timestamps.size}. Likely Doze stall or OEM service kill.",
-            maxGap <= SpikeTestConfig.MAX_ALLOWED_GAP_MS,
+            "Service restarted: ${sessions.size} heartbeat sessions found (expected 1). " +
+                "A new session = the original mic-FGS was KILLED → S1-AC1 not met.",
+            sessions.size == 1,
         )
 
+        // The single session must span ~the whole window; ending early = killed mid-run
+        // (this is how a START_NOT_STICKY kill surfaces — one file that simply stops).
+        val lastT = sessions.flatten().maxOrNull() ?: 0L
         assertTrue(
-            "FGS microphone notification not present while service active (S1-AC2 violated).",
-            micNotificationPresent(),
+            "Capture ended early at t=${lastT}ms, expected ~${SpikeTestConfig.totalMs}ms " +
+                "(tolerance ${EARLY_END_TOLERANCE_MS}ms) → service killed before the window ended.",
+            lastT >= SpikeTestConfig.totalMs - EARLY_END_TOLERANCE_MS,
+        )
+
+        // Continuity within the session.
+        val worstGap = HeartbeatLogger.maxGapWithinSessions(sessions)
+        val breakAt = locateBreak(sessions.firstOrNull().orEmpty())
+        assertTrue(
+            "Heartbeat continuity broken: worstGap=${worstGap}ms exceeds " +
+                "${SpikeTestConfig.MAX_ALLOWED_GAP_MS}ms. Break near t=${breakAt}ms. " +
+                "Likely Doze stall or OEM service kill.",
+            worstGap <= SpikeTestConfig.MAX_ALLOWED_GAP_MS,
+        )
+
+        // S1-AC1 proper: AUDIO actually flowed. Assert the PCM byte counter grew past a
+        // conservative floor proportional to elapsed capture — a muted-but-alive mic (STALL
+        // beats, 0 bytes) cannot pass this even with perfect heartbeat continuity.
+        val maxBytes = readMaxBytes()
+        val floorBytes = lastT / MILLIS_PER_SEC * BYTES_PER_SEC * MIN_CAPTURE_PERCENT / PERCENT
+        assertTrue(
+            "Audio did not flow: captured maxBytes=$maxBytes < floor=$floorBytes " +
+                "(>=$MIN_CAPTURE_PERCENT% of nominal ${BYTES_PER_SEC}B/s over ${lastT}ms). " +
+                "Service may be alive but the mic is muted/throttled → S1-AC1 not met.",
+            maxBytes in (floorBytes + 1)..Long.MAX_VALUE,
+        )
+
+        // S1-AC2: the mic FGS notification (OUR channel) was present DURING screen-off.
+        assertTrue(
+            "FGS microphone notification (channel ${NotificationHelper.CHANNEL_ID}) was not " +
+                "present during screen-off → S1-AC2 violated.",
+            notifSeenDuringScreenOff,
         )
     }
 
-    /** Parse `t=<ms>` values out of the per-session heartbeat log(s) under filesDir. */
-    private fun readHeartbeatTimestamps(): List<Long> {
-        val files =
-            context.filesDir.listFiles { f -> f.name.startsWith("heartbeat_") }
-                ?: emptyArray()
-        return files
-            .flatMap { parseFile(it) }
-            .sorted()
-    }
+    /** One sorted timestamp list per `heartbeat_<session>.log` — NEVER merged across sessions. */
+    private fun readSessions(): List<List<Long>> =
+        heartbeatFiles()
+            .map { parseLongs(it, T_REGEX).sorted() }
+            .filter { it.isNotEmpty() }
 
-    private fun parseFile(file: File): List<Long> =
+    /** Largest cumulative `bytes=` value seen across all session logs. */
+    private fun readMaxBytes(): Long =
+        heartbeatFiles()
+            .flatMap { parseLongs(it, BYTES_REGEX) }
+            .maxOrNull() ?: 0L
+
+    private fun heartbeatFiles(): List<File> =
+        (context.filesDir.listFiles { f -> f.name.startsWith("heartbeat_") } ?: emptyArray())
+            .toList()
+
+    private fun parseLongs(
+        file: File,
+        regex: Regex,
+    ): List<Long> =
         runCatching {
             file.readLines().mapNotNull { line ->
-                T_REGEX.find(line)?.groupValues?.getOrNull(1)?.toLongOrNull()
+                regex.find(line)?.groupValues?.getOrNull(1)?.toLongOrNull()
             }
         }.getOrDefault(emptyList())
 
@@ -134,19 +178,27 @@ class MicFgsSurvivalTest {
         return at
     }
 
-    /** True if any active notification belongs to our capture channel. */
-    private fun micNotificationPresent(): Boolean {
-        val dump = shell("dumpsys notification --noredact")
-        return dump.contains(NotificationHelper.CHANNEL_ID) ||
-            dump.contains(context.packageName)
-    }
+    /** True only if a live notification belongs to OUR capture channel specifically. */
+    private fun micNotificationPresent(): Boolean =
+        shell("dumpsys notification --noredact").contains(NotificationHelper.CHANNEL_ID)
 
     private fun shell(cmd: String): String = device.executeShellCommand(cmd)
 
     private companion object {
         val T_REGEX = Regex("""t=(\d+)""")
+        val BYTES_REGEX = Regex("""bytes=(\d+)""")
         const val STARTUP_TIMEOUT_MS = 5_000L
         const val POLL_INTERVAL_MS = 30_000L
         const val MIN_EXPECTED_BEATS = 2
+
+        // Nominal PCM byte rate: 16 kHz * 16-bit * mono = 32 000 B/s.
+        const val BYTES_PER_SEC = 32_000L
+        const val MILLIS_PER_SEC = 1_000L
+        const val PERCENT = 100L
+        // Require >= this % of nominal bytes: conservative vs OEM throttle, but a muted mic
+        // (~0 bytes) fails it.
+        const val MIN_CAPTURE_PERCENT = 25L
+        // The last beat may trail the deadline by up to one poll interval + a beat period.
+        const val EARLY_END_TOLERANCE_MS = 45_000L
     }
 }

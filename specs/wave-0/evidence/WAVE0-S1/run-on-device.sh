@@ -27,6 +27,7 @@ set -euo pipefail
 PKG="com.aiear"
 TAG="AIEAR_S1"
 MAX_ALLOWED_GAP_MS=15000
+EARLY_END_TOL_MS=45000
 MINUTES=60
 FORCE_DOZE=true
 MODE="gradle"
@@ -45,25 +46,35 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# --- parser: max consecutive gap between t=<ms> values in a heartbeat log -----
-# Portable (gawk + macOS/BSD awk): extract t= values with grep, do gap math in
-# plain awk reading one integer per line (no 3-arg match() GNU extension).
+# --- parser: score ONE session log (one heartbeat_<session>.log = one session) -
+# FAILS CLOSED: empty/insufficient -> non-zero; within-file t= reset -> FAIL;
+# gap over tolerance -> FAIL; ended early (last_t < expect-tol) -> FAIL (killed
+# mid-run). $2 = expected total ms (0 to skip the early-end check). Portable awk.
 parse_heartbeat() {
   local f="$1"
-  if [[ ! -s "$f" ]]; then echo "PARSE: empty/missing log: $f"; return 1; fi
-  grep -oE 't=[0-9]+' "$f" | cut -d= -f2 | awk -v lim="$MAX_ALLOWED_GAP_MS" '
+  local expect_ms="${2:-0}"
+  if [[ ! -s "$f" ]]; then echo "PARSE: empty/missing log: $f -> FAIL"; return 1; fi
+  grep -oE 't=[0-9]+' "$f" | cut -d= -f2 | awk \
+      -v lim="$MAX_ALLOWED_GAP_MS" -v expect="$expect_ms" -v tol="$EARLY_END_TOL_MS" '
     { t = $1 + 0; n++
+      if (have && t < prev) reset = 1            # t went backwards in one file = corruption/merge
       if (have) { d = t - prev; if (d > maxd) { maxd = d; at = prev } }
+      if (t > last) last = t
       prev = t; have = 1 }
     END {
-      if (n < 2) { print "PARSE: beats=" n " (need >=2) -> INSUFFICIENT"; exit 3 }
-      printf "PARSE: beats=%d  max_gap=%d ms  break_near_t=%d ms\n", n, maxd, at
-      if (maxd > lim) { print "RESULT: FAIL (gap > " lim " ms) -> S1-AC1 NOT met on this device"; exit 1 }
-      print "RESULT: PASS (continuous within tolerance) -> S1-AC1 met on this device"
+      if (n < 2) { print "PARSE: beats=" n " (need >=2) -> INSUFFICIENT/FAIL"; exit 1 }
+      printf "PARSE: beats=%d  max_gap=%d ms  last_t=%d ms  break_near_t=%d ms\n", n, maxd, last, at
+      fail = 0
+      if (reset)    { print  "RESULT: FAIL (t= reset within file -> session corruption/restart)"; fail = 1 }
+      if (maxd > lim) { printf "RESULT: FAIL (gap %d > %d ms) -> S1-AC1 NOT met\n", maxd, lim; fail = 1 }
+      if (expect > 0 && last < expect - tol) {
+        printf "RESULT: FAIL (ended early: last_t %d < %d-%d ms) -> killed mid-run\n", last, expect, tol; fail = 1 }
+      if (fail) exit 1
+      print "RESULT: PASS (continuous + full duration within tolerance) -> S1-AC1 met on this device"
     }'
 }
 
-if [[ -n "$PARSE_ONLY" ]]; then parse_heartbeat "$PARSE_ONLY"; exit $?; fi
+if [[ -n "$PARSE_ONLY" ]]; then parse_heartbeat "$PARSE_ONLY" 0; exit $?; fi
 
 # --- preconditions -----------------------------------------------------------
 command -v adb >/dev/null || { echo "adb not found (install platform-tools)"; exit 2; }
@@ -128,8 +139,21 @@ else
   done
 fi
 
-echo ">> scoring continuity"
+echo ">> scoring continuity (fail-closed)"
+EXPECT_MS=$(( MINUTES * 60 * 1000 ))
 RC=0
-for L in "$RUN_DIR"/heartbeat_*.log; do [[ -e "$L" ]] || continue; parse_heartbeat "$L" || RC=$?; done
-echo ">> DONE. Paste $RUN_DIR/ into the PR (device-logs/) and tick the row in device-matrix-checklist.md."
+shopt -s nullglob
+FILES=( "$RUN_DIR"/heartbeat_*.log )
+shopt -u nullglob
+if [[ ${#FILES[@]} -eq 0 ]]; then
+  echo "RESULT: FAIL (no heartbeat log pulled -> capture never started / run-as blocked / killed instantly)"
+  RC=1
+elif [[ ${#FILES[@]} -gt 1 ]]; then
+  echo "RESULT: FAIL (${#FILES[@]} heartbeat sessions -> the original mic-FGS was KILLED and restarted)"
+  for L in "${FILES[@]}"; do parse_heartbeat "$L" "$EXPECT_MS" || true; done
+  RC=1
+else
+  parse_heartbeat "${FILES[0]}" "$EXPECT_MS" || RC=$?
+fi
+echo ">> DONE (exit $RC). Paste $RUN_DIR/ into the PR (device-logs/) and tick the row in device-matrix-checklist.md."
 exit $RC

@@ -1,0 +1,53 @@
+############################################################################
+# AIEAR — WAVE0-S1 post-audit HARDENING re-verification (verifier)
+# Date: 2026-06-24 · Trigger: AUDIT-WAVE0-S1.md (4 major false-PASS vectors)
+############################################################################
+
+The architect's phase-close audit found the device harness could report a FALSE
+GREEN (pass through the exact OEM kill the spike hunts). Per the revision loop the
+4 majors were fixed in-session and re-verified mechanically below. The on-device
+run itself remains a deferred gap (needs-device) — but the INSTRUMENT is now sound.
+
+FIXES APPLIED
+  [major-1] START_STICKY -> START_NOT_STICKY (MicForegroundService): a kill is now
+            terminal + visible as the log ending early; removes the null-intent
+            FGS-did-not-start crash path. Comment corrected.
+  [major-2] Muted-but-alive false-PASS: heartbeat now beats STALL (not ALIVE) when
+            0 bytes were captured in the interval; the survival test asserts the PCM
+            byte counter grew past a conservative floor (>=25% of 32 000 B/s).
+  [major-3] Cross-session merge masked kills: survival test now parses PER SESSION
+            (HeartbeatLogger.maxGapWithinSessions), treats >1 session file as a kill,
+            and asserts the single session spanned ~the full window (early-end check).
+  [major-4] run-on-device.sh failed OPEN: parser + scoring now FAIL-CLOSED (no log /
+            insufficient / t= reset / multiple sessions / ended-early -> non-zero).
+  [minor]   AC2 assertion tightened to OUR channel + sampled DURING screen-off;
+            service self-ensures its notification channel; minSdk=34 precondition
+            added to device-matrix-checklist.md.
+
+============================================================================
+RE-RUN 1 — pure heartbeat seam (kotlinc 2.0.21 + JUnit 4.13.2), now 7 tests
+  incl. the per-session fix that proves a kill+restart can no longer hide.
+============================================================================
+$ java ... K2JVMCompiler HeartbeatSeam.kt HeartbeatSeamTest.kt   => compiled
+$ java ... org.junit.runner.JUnitCore com.aiear.capture.HeartbeatSeamTest
+  JUnit version 4.13.2
+  .......
+  OK (7 tests)
+  Key new case maxGapWithinSessions_reportsWorstInternalGap_notCrossSessionBlend:
+    sessionA=[0,10k,50k] (40k break), sessionB=[0,10k,20k] (kill+restart, t= reset)
+    -> reports 40 000 ms (A's real break), NOT a small cross-session blend.  PASS.
+
+============================================================================
+RE-RUN 2 — run-on-device.sh parser fail-closed matrix (portable awk)
+============================================================================
+  GOOD (continuous 10s beats) ............ RESULT: PASS    exit 0
+  GAP 40s ................................ RESULT: FAIL     exit 1
+  RESET (t= backwards in one file) ....... RESULT: FAIL     exit 1
+  INSUFFICIENT (1 beat) .................. INSUFFICIENT     exit 1
+  EMPTY file ............................. FAIL             exit 1
+  EARLY-END (last 60k vs expect 120k) .... FAIL ended early exit 1
+  => no path exits 0 without continuous + full-duration capture. Fails closed.
+
+STILL DEFERRED (unchanged): the real >=60-min on-device run (needs-device) and the
+full Gradle build (needs-google-maven-egress). The harness that produces that proof
+is now trustworthy; running it remains the founder's followup.
