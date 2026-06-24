@@ -10,8 +10,17 @@ complexity:
     # mic-FGS capture loop + onStartCommand are intentionally a bit longer; keep
     # them readable as single units rather than over-fragmenting native control flow.
     threshold: 80
+  NestedBlockDepth:
+    # The AudioRecord read loop (try → outputStream.use → while → if/else) reaches
+    # depth 5; acceptable for an audio capture loop kept as one readable unit.
+    threshold: 5
   TooManyFunctions:
     active: false
+
+naming:
+  FunctionNaming:
+    # Jetpack Compose @Composable functions are PascalCase by design.
+    ignoreAnnotated: ['Composable']
 
 style:
   MagicNumber:
@@ -23,6 +32,9 @@ style:
     maxLineLength: 120
   ReturnCount:
     active: false
+  UnusedPrivateMember:
+    # @Preview composables are invoked by tooling, not by code — not dead members.
+    ignoreAnnotated: ['Composable', 'Preview']
 
 exceptions:
   TooGenericExceptionCaught:

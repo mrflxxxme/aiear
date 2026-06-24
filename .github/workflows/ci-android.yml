@@ -4,7 +4,7 @@
 name: ci-android
 on:
   pull_request:
-    paths: ["app/**", "gradle/**", "*.gradle*", ".github/workflows/ci-android.yml"]
+    paths: ["app/**", "gradle/**", "*.gradle*", "config/**", ".github/workflows/ci-android.yml"]
 
 # Активируется path-фильтром выше (app/ уже есть). hashFiles() НЕЛЬЗЯ в job-level if:
 # (вычисляется до checkout) — это даёт startup_failure; фильтр paths достаточен.
