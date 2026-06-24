@@ -11,7 +11,10 @@ jobs:
         with: { fetch-depth: 0 }
       - name: Secret scan (gitleaks)
         uses: gitleaks/gitleaks-action@v2
-        env: { GITLEAKS_LICENSE: "" }
+        env:
+          # Required by gitleaks-action@v2 to scan PRs (breaking change); auto-provided.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ""
       - name: SAST (Semgrep)
         if: ${{ hashFiles('app/**', 'backend/**') != '' }}
         run: 'echo "TODO: semgrep --config auto (когда появится код)"'
