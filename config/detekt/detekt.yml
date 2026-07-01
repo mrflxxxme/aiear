@@ -1,0 +1,46 @@
+# Minimal detekt config — builds upon the bundled defaults (buildUponDefaultConfig=true
+# in app/build.gradle.kts). No baseline: the spike is small enough to stay clean.
+# Only deviations from defaults are listed here.
+
+build:
+  maxIssues: 0
+
+complexity:
+  LongMethod:
+    # mic-FGS capture loop + onStartCommand are intentionally a bit longer; keep
+    # them readable as single units rather than over-fragmenting native control flow.
+    threshold: 80
+  NestedBlockDepth:
+    # The AudioRecord read loop nests try → outputStream.use → while → if/else-if
+    # (depth 6); acceptable for an audio capture loop kept as one readable unit
+    # rather than fragmenting the audited control flow. Headroom over the real depth.
+    threshold: 7
+  TooManyFunctions:
+    active: false
+
+naming:
+  FunctionNaming:
+    # Jetpack Compose @Composable functions are PascalCase by design.
+    ignoreAnnotated: ['Composable']
+
+style:
+  MagicNumber:
+    # Audio constants (16000 Hz, PCM bit sizes, 10s heartbeat) are inherently numeric
+    # and clearer inline; they are named via consts where it helps.
+    ignorePropertyDeclaration: true
+    ignoreCompanionObjectPropertyDeclaration: true
+  MaxLineLength:
+    maxLineLength: 120
+  ReturnCount:
+    active: false
+  UnusedPrivateMember:
+    # @Preview composables are invoked by tooling, not by code — not dead members.
+    ignoreAnnotated: ['Composable', 'Preview']
+
+exceptions:
+  TooGenericExceptionCaught:
+    # The capture loop deliberately catches broad Throwable to log READ_ERR/EXC
+    # heartbeats (S1-AC3: an interruption must be recorded, never silent).
+    active: false
+  SwallowedException:
+    active: false

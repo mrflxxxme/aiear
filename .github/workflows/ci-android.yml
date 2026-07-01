@@ -1,28 +1,37 @@
-# CI — Android (шаблон; подключить, когда появится app/)
-# Гейты пайплайна: lint → typecheck → unit → instrumented (Firebase Test Lab) → screenshot.
+# CI — Android (спайк S1: app/ есть; GH-раннер имеет Google-Maven egress).
+# Гейты: lint (ktlint+detekt) → unit → assemble (app + androidTest компилируется).
+# Этот workflow и есть green-build evidence для WAVE0-S1 (закрывает needs-google-maven-egress;
+# см. specs/wave-0/evidence/WAVE0-S1/ci-green.md). Сам device-прогон — у фаундера (needs-device).
+# Coverage (jacoco) / screenshot (paparazzi) / instrumented (FTL) — в F-фазах.
 name: ci-android
 on:
   pull_request:
-    paths: ["app/**", "gradle/**", "*.gradle*", ".github/workflows/ci-android.yml"]
+    paths: ["app/**", "gradle/**", "*.gradle*", "config/**", ".editorconfig", ".github/workflows/ci-android.yml"]
 
+# Активируется path-фильтром выше (app/ уже есть). hashFiles() НЕЛЬЗЯ в job-level if:
+# (вычисляется до checkout) — это даёт startup_failure; фильтр paths достаточен.
 jobs:
   android:
     runs-on: ubuntu-latest
-    if: ${{ hashFiles('app/**') != '' }}   # активируется, когда появится app/
+    env:
+      GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}   # secrets нельзя в if: → мапим в env
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: "17" }
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
       - name: Lint (ktlint + detekt)
         run: ./gradlew ktlintCheck detekt
-      - name: Unit + coverage
-        run: ./gradlew testDebugUnitTest jacocoTestReport
-      - name: Compose screenshot tests
-        run: ./gradlew verifyPaparazziDebug || ./gradlew validateScreenshotTest
-      # Инструментальные тесты на матрице реальных устройств — Firebase Test Lab.
-      # Требует GCP-secrets (вне контекста агента). Подключить на Wave 0/MVP-0.
+      - name: Unit tests
+        run: ./gradlew testDebugUnitTest
+      - name: Assemble (app + instrumented test compile)
+        run: ./gradlew assembleDebug assembleDebugAndroidTest
+      # Coverage (jacoco) + Compose screenshot (paparazzi) подключатся, когда плагины
+      # появятся в каталоге (F-фазы). Инструментальные на реальных OEM — Firebase Test
+      # Lab, требует GCP_SA_KEY secret.
       - name: Instrumented (Firebase Test Lab)
-        if: ${{ secrets.GCP_SA_KEY != '' }}
-        run: echo "TODO: gcloud firebase test android run (Gradle Managed Devices → FTL)"
+        if: ${{ env.GCP_SA_KEY != '' }}
+        run: 'echo "TODO: gcloud firebase test android run (GMD -> FTL)"'
 # Заметка: OEM-killer фон (Xiaomi/Honor) FTL покрывает не полностью —
 # физ-OEM sanity делает фаундер на wave-гейте (см. memory/android-oem.md).

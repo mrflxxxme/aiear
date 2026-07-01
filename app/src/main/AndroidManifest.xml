@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Audio capture for the thought-catcher (foreground only). -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!-- Foreground service + the Android 14+ microphone subtype. The microphone
+         subtype is the ONLY ADR-002-legal path to background mic capture. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+
+    <!-- Required (API 33+) to show the ongoing FGS notification (S1-AC2). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!--
+      ADR-002 hard bans — deliberately ABSENT (their absence is a conformance signal):
+        * NO <receiver> for android.intent.action.BOOT_COMPLETED  (banned mic auto-start, Android 14+)
+        * NO AccessibilityService                                  (Play-banned automation)
+        * NO silent-audio / Now Playing hack
+      The only legal start surface is startForegroundService() from the foreground MainActivity.
+    -->
+
+    <application
+        android:name=".AiearApp"
+        android:allowBackup="false"
+        android:icon="@android:drawable/ic_btn_speak_now"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.AIEAR">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:theme="@style/Theme.AIEAR">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Mic foreground service. exported=false: started only in-process from the
+             foreground Activity (ADR-002). foregroundServiceType=microphone is required
+             on Android 14+ and must match the ServiceCompat.startForeground type. -->
+        <service
+            android:name=".capture.service.MicForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
+
+    </application>
+
+</manifest>

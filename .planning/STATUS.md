@@ -1,13 +1,13 @@
 <!-- AUTO-MAINTAINED by memory-curator at every phase-close. Manual edits may be overwritten. -->
 # STATUS — роллинг-статус AIEAR
 
-**Обновлено:** 2026-06-24 · **Текущая волна:** Wave 0 (спайки риска, блокирующая) · **Активная фаза:** — (ожидает старта S1)
+**Обновлено:** 2026-06-24 · **Текущая волна:** Wave 0 (спайки риска, блокирующая) · **Активная фаза:** WAVE0-S1 (PR-гейт открыт; решение фаундера)
 
 ## Сводка волн
 
 | Wave | Цель | Статус | Гейт |
 |---|---|---|---|
-| **Wave 0** | Спайки риска S1–S6 (5 «гейтов взлёта» + 1 оценочный) | 🔜 готов к старту | S1–S5 зелёные на ≥2 OEM → MVP-0 |
+| **Wave 0** | Спайки риска S1–S6 (5 «гейтов взлёта» + 1 оценочный) | 🟡 в работе (S1 на PR-гейте) | S1–S5 зелёные на ≥2 OEM → MVP-0 |
 | **MVP-0** | «Поймай мысль» (free), F1–F7 | ⛔ заблокирован Wave 0 | activation >40%, W4-retention >25% → MVP-1 |
 | **MVP-0.x** | Доп. интеграции (Notion, Google Cal, Todoist) | ⏸ позже | — |
 | **MVP-1** | «Встречи/лекции» + биллинг, M1–M5 | ⏸ стаб | Free→Paid 3–6%, маржа >50% → V1 |
@@ -18,7 +18,7 @@
 
 | Spike | EARS-суть | Блокирующий? | Статус |
 |---|---|---|---|
-| S1 | mic-FGS переживает screen-off ≥60 мин | да | 🔜 |
+| S1 | mic-FGS переживает screen-off ≥60 мин | да | 🟡 PR-гейт · аудит `pass-with-followups` · **CI зелёный** (lint/unit/assemble на раннере) → green-build gap закрыт; остаётся **device-прогон (Xiaomi) на фаундере** (1 evidence_gap) |
 | S2 | CDM-автозапуск по BT из фона | да | 🔜 |
 | S3 | Активация tile / media-button <1 сек | да | 🔜 |
 | S4 | RuStore Pay SDK sandbox: подписка+рекуррент | да | 🔜 |
@@ -36,8 +36,14 @@
 | Спеки Wave 0 (S1–S6) | ✅ |
 | Спеки MVP-0 (F1–F7) | ✅ |
 | CI (Android/backend/security) | ✅ шаблоны (не подключены к secrets) |
-| Код `app/` + `backend/` | ⛔ ещё нет (стартует в MVP-0 после Wave 0) |
+| Код `app/` + `backend/` | 🟡 `app/` скелет + mic-FGS спайк (S1); `backend/` ещё нет |
 
 ## Следующее действие
 
-Фаундер: разовый ops-setup (RuStore dev-аккаунт ИП, keystore, ключи Yandex Cloud/GigaChat, billing-sandbox, 2–3 физ-OEM) → диспетч **WAVE0-S1** автономной сессией (`planner`).
+**Фаундер на гейте WAVE0-S1** (PR открыт, не смержен — tier 4):
+1. **Ратифицировать** 2 evidence_gap (`needs-device`, `needs-google-maven-egress`) + пины версий / `minSdk=34` / имя ветки (см. PR + `AUDIT-WAVE0-S1.md`).
+2. **Прогнать** `specs/wave-0/evidence/WAVE0-S1/run-on-device.sh` на ≥2 физ-OEM (**Xiaomi обяз.**), 60 мин screen-off + Doze → залить `device-logs/` (закрывает `needs-device` = реальный S1-GO).
+3. ~~Green-build~~ ✅ **закрыто CI**: `ci-android` зелёный (lint+unit+assemble) на раннере — `needs-google-maven-egress` снят (см. `evidence/WAVE0-S1/ci-green.md`).
+4. Решение гейта: `merge / revise / abort`. S1-GO ещё **не** взят (device-доказательство pending).
+
+Затем: следующий спайк **WAVE0-S2** (CDM-автозапуск) автономной сессией.

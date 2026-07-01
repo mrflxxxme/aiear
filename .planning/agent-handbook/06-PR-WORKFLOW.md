@@ -30,6 +30,27 @@ phase-ветка (phase/<PHASE>-<slug>)
 
 **Обработка фейла CI:** tier 1 — нет merge, revision-loop. tier 2+ — block, reviewer ищет причину. Security-чек красный — emergency stop, reviewer-security.
 
+### CI-дисциплина: довести до зелёного (уроки WAVE0-S1)
+
+Фаза не закрывается с красным CI. Открыла сессия PR — доводит чеки до зелёного
+(re-diagnose → re-kick каждый раунд), либо явно репортит реальный блокер (не молчит).
+Частые **startup_failure**'ы GitHub Actions (run с **0 jobs**, показан по пути файла
+`.github/workflows/*.yml`, event=push = невалидный workflow-файл, а не баг кода):
+
+- **`run: echo "...: ..."`** — двоеточие-пробел в **неэкранированном** скаляре = битый YAML.
+  Оборачивай: `run: 'echo "x: y"'` или блок `run: |`.
+- **`secrets` в `if:`** — запрещённый контекст → startup_failure. Мапь в `env:` и проверяй
+  `env.X`: `env: { TOKEN: ${{ secrets.X }} }` + `if: ${{ env.TOKEN != '' }}`.
+- **`hashFiles()` в `if:` на уровне JOB** — вычисляется до checkout → startup_failure. Гейти на
+  уровне STEP (после checkout) или path-фильтром `on.pull_request.paths`.
+- **gitleaks-action@v2** требует `GITHUB_TOKEN` для PR-сканов — передай через `env`.
+- **path-фильтр и head**: workflow с `paths:` не запустится, если последний коммит не трогает эти
+  пути → у head не будет его чека. Делай коммит, меняющий нужный путь, последним.
+
+Перед пушем workflow-правок валидируй локально (`python3 -c "import yaml; yaml.safe_load(open('f'))"`):
+YAML-синтаксис ловится, но expression-ошибки (`secrets`/`hashFiles` в `if`) — нет, их выдаёт только
+запуск → проверяй по `get_job_logs`/`get_workflow_run` (0 jobs = startup_failure, ищи невалидную конструкцию).
+
 ## Тиры (повтор из conventions §5)
 
 | Tier | Что | Действие фаундера |

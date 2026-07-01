@@ -6,12 +6,13 @@
 |---|---|---|---|---|
 | Q1 | GigaChat vs YandexGPT — финал по бенчмарку | Фаундер + `evaluator` | до MVP-0 **F2** | 🟡 open |
 | Q2 | Точные тарифы STT/LLM и объёмные скидки | Фаундер | до контракта инфры | 🟡 open |
-| Q3 | Набор OEM для device-sanity (топ РФ) | Фаундер | до **Wave 0** | 🟡 open |
+| Q3 | Набор OEM для device-sanity (топ РФ) | Фаундер | до **Wave 0** | 🟠 предложено (Pixel 8 + Xiaomi/MIUI + Samsung; Xiaomi обяз.) — на ратификации в PR S1 |
 | Q4 | Формат согласия на запись (юр-проверка) | Legal | до MVP-1 **M4** | 🟡 open |
 | Q5 | KZ-юрлицо для intl-ИИ | Фаундер/Legal | до **V1.3** | 🟡 open |
 | Q6 | Исход спайка **S6** (wake-word едет ли в MVP-0.x) | `native-spike-debugger` + фаундер | по итогам Wave 0 | 🟡 open |
 | Q7 | Cost-caps в `$` — подтвердить/поправить числа из ORIION-дефолтов | Фаундер | до первого автономного прогона | 🟡 open |
 | Q8 | Подключение claude-flow MCP (AgentDB) — когда корпус памяти оправдает | Фаундер | после первых фаз MVP-0 | 🟡 open |
+| Q9 | Egress для Android-сборок в автономных сессиях: allowlist Google Maven (`maven.google.com`/`dl.google.com`) и/или пред-прогретый SDK-кэш + FTL/GCP-креды | Фаундер | до след. Android-фазы (S2/S3, F1) | 🔴 blocker (S1 выявил: 403 на Google Maven → нет Android-build/FTL в облаке) |
 
 ## Как закрывать
 

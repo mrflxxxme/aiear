@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Compose drives the UI; this is just the platform shell theme. Material3
+         DayNight with no action bar so the Activity hands off to setContent {}. -->
+    <style name="Theme.AIEAR" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
