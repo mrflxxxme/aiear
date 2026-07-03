@@ -31,11 +31,12 @@
 |---|---|
 | `.planning/` спина (PROJECT/STATUS/JOURNAL/OQ) | ✅ |
 | `.claude/agents/` (11 ролей) | ✅ |
-| ADR-001..010 | ✅ |
+| ADR-001..011 | ✅ |
 | Регламент evidence-backed автономности (ADR-010, handbook 07) | ✅ |
+| **Автономный runner (ADR-011): `.claude/autonomy/` + `scripts/autonomy/` + `/autonomy:*` + `_session-context/`** | 🟡 рельсы построены (Блоки A–E) · **auto-merge OFF (rails-first)** до Wave-0-green + CI-secrets |
 | Спеки Wave 0 (S1–S6) | ✅ |
 | Спеки MVP-0 (F1–F7) | ✅ |
-| CI (Android/backend/security) | ✅ шаблоны (не подключены к secrets) |
+| CI (Android/backend/security/evidence) | ✅ шаблоны (не подключены к secrets; `ci-evidence` — PR-гейт целостности) |
 | Код `app/` + `backend/` | 🟡 `app/` скелет + mic-FGS спайк (S1); `backend/` ещё нет |
 
 ## Следующее действие

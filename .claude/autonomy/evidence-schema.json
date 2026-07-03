@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://aiear.app/schemas/autonomy-evidence.v1.json",
+  "title": "AIEAR autonomy gate evidence artifact",
+  "description": "Per ADR-011 D3 (adaptation of ORIION ADR-037). Emitted by a local-only gate that GitHub CI cannot run: live-gold ru-STT/LLM (Yandex SpeechKit / GigaChat), RuStore Pay sandbox, on-device OEM survival (Firebase Test Lab / agent-device / physical OEM), or the adversarial audit. Committed to the PR branch under evidence/<gate>.json. The ci-evidence job asserts freshness (head_sha == PR head) + verdict == PASS for every gate the phase declares in evidence/manifest.json. Makes local gates un-fakeable at merge and doubles as the founder's post-hoc audit trail. Native-background phases MUST include a device-survival gate here (tripwire requires_device_evidence).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "gate", "head_sha", "timestamp", "verdict"],
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "description": "Bump when the shape changes; verify_evidence.py pins this."
+    },
+    "gate": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+$",
+      "description": "Stable gate id, matches an entry in evidence/manifest.json required_gates. AIEAR gate ids: live_gold_stt, live_gold_llm, rustore_sandbox, device_survival, adversarial_audit, judge_panel_<fork>."
+    },
+    "head_sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$",
+      "description": "Full 40-char SHA of the commit the gate actually ran against. MUST equal the PR head SHA at CI time, else the evidence is stale and the gate fails."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC when the gate completed."
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["PASS", "FAIL"],
+      "description": "PASS is the only value that lets ci-evidence go green for this gate."
+    },
+    "cost_usd": {
+      "type": "number",
+      "minimum": 0,
+      "description": "LLM/FTL/infra spend to produce this evidence (funded live-gold, device-lab minutes). Feeds the per-run budget audit."
+    },
+    "runner": {
+      "type": "string",
+      "description": "Who produced it — agent role / script name (e.g. scripts/live_gold_stt.py, verifier, reviewer-security)."
+    },
+    "details": {
+      "description": "Free-form gate-specific payload: golden pass-rate + WER, RuStore sandbox tx ids, device matrix (OEM + screen-off minutes survived), reviewer verdicts + refute-by-default confirmation, etc.",
+      "type": ["object", "string", "array"]
+    }
+  }
+}

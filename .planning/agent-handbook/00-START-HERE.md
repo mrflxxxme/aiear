@@ -26,6 +26,8 @@ Wave (роадмап + go/no-go-гейт)
 
 Поток фазы: `planner` → impl (`android-engineer` ∥ `backend-engineer`) → ревью (`reviewer` ∥ `reviewer-security`) → `verifier` → **phase-аудит** (`architect`) → `memory-curator` → **фаундер-гейт** → merge. Подробно — [`02-PIPELINE.md`](02-PIPELINE.md).
 
+**Автономный runner (ADR-011):** фазы сцепляются через `/autonomy:run`; ты владеешь impl+arch-форками (решаешь+логируешь), эскалируешь только продукт/рынок + трипвайр. Режим сейчас — rails-first (auto-merge off, пауза на ack на каждом PR). Гайд — [`08-AUTONOMOUS-RUNNER.md`](08-AUTONOMOUS-RUNNER.md).
+
 ## 6 правил, которые нарушать нельзя
 
 1. **Делай ровно spec.** Неясность → `task.unclear` к `planner`. Не додумывай.

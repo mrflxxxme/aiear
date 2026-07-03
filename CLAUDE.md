@@ -22,6 +22,8 @@ Wave (роадмап + go/no-go-гейт)
 
 **Пайплайн фазы:** `planner` → (`designer`?) → `android-engineer` ∥ `backend-engineer` → `reviewer` ∥ `reviewer-security` → `verifier` (EARS-тесты + live-gold + evidence) → **phase-close аудит** (`architect`) → `memory-curator` → **фаундер аппрувит гейт** → PR merge.
 
+**Автономный runner (ADR-011):** фазы сцепляются автономно через `/autonomy:run` — агент **владеет** всеми impl+arch-форками (решает+логирует), эскалирует **только** продукт/рынок + трипвайр-категории; целостность держится на evidence, привязанном к коммиту. **Режим сейчас — rails-first: auto-merge ВЫКЛЮЧЕН**, runner паузит на фаундер-ack на каждом PR (включается после Wave-0-green + CI-secrets). Канон — [ADR-011](.planning/decisions/ADR-011-autonomous-multiphase-runner.md), гайд — [`08-AUTONOMOUS-RUNNER.md`](.planning/agent-handbook/08-AUTONOMOUS-RUNNER.md), конфиг — [`.claude/autonomy/`](.claude/autonomy/README.md).
+
 ### Ростер (11 ролей) и модель-роутинг
 
 | Слой | Роль | Модель | Когда |
@@ -51,6 +53,7 @@ Wave (роадмап + go/no-go-гейт)
 - **Дисциплина контекста (рычаг токенов №1):** грузи только свой срез (см. [`01-CONTEXT-LOADING.md`](.planning/agent-handbook/01-CONTEXT-LOADING.md)). Не читай весь репозиторий «на всякий случай».
 - **Всегда пост-аудит:** фаза не закрывается без `AUDIT-REPORT.md` (см. [`04-POST-AUDIT.md`](.planning/agent-handbook/04-POST-AUDIT.md)).
 - **Evidence-backed автономность (ADR-010):** агент сам прогоняет тесты + **live-gold** (на реальных сервисах/устройствах, где возможно) **до** PR и прикладывает доказательства в `specs/<wave>/evidence/<PHASE>/`. «Зелёное по утверждению» запрещено; live невозможен → явный `evidence_gap`/`blocked`, не тихий скип. См. [`07-VERIFICATION-EVIDENCE.md`](.planning/agent-handbook/07-VERIFICATION-EVIDENCE.md).
+- **Растяжки автономии (ADR-011):** под runner'ом решай сам, но **паузь на фаундер-ack** при диффе, задевающем трипвайр (миграции · auth · billing · секреты/ключи · ПД/ФЗ-242 · **нативный фон** · публичные контракты — `.claude/autonomy/tripwire.yaml`), и **эскалируй** только продукт/рынок + эти категории (`.claude/autonomy/escalation-policy.md`). Нативный фон — двойной гейт: растяжка + обязательный `device_survival`-evidence. Никогда не мёржи вслепую, не байпась pre-merge хук.
 
 ## 4. Стек
 
@@ -69,4 +72,4 @@ ruff check . && mypy --strict . && pytest
 
 ## 6. Точка входа агента
 
-Новый агент в репо → читай [`.planning/agent-handbook/00-START-HERE.md`](.planning/agent-handbook/00-START-HERE.md), затем свой файл роли в [`.claude/agents/<role>.md`](.claude/agents/), затем активный `specs/<phase>/spec.md`.
+Новый агент в репо → читай [`.planning/agent-handbook/00-START-HERE.md`](.planning/agent-handbook/00-START-HERE.md), затем свой файл роли в [`.claude/agents/<role>.md`](.claude/agents/), затем активный `specs/<phase>/spec.md`. Работаешь под автономным runner'ом → сначала [`08-AUTONOMOUS-RUNNER.md`](.planning/agent-handbook/08-AUTONOMOUS-RUNNER.md) + [`.claude/autonomy/`](.claude/autonomy/README.md).

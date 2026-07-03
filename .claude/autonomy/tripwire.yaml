@@ -1,0 +1,104 @@
+# AIEAR autonomy tripwire — задняя растяжка per ADR-011 D2 (адаптация ORIION ADR-037).
+#
+# Runner (Claude в автономной сессии) перед (потенциальным) auto-merge классифицирует
+# diff PR'а по этим path-глобам. Совпадение с любой категорией → НЕ auto-merge:
+# фаза доводится до зелёного, пишется в RUN-QUEUE.md + push-notify, ждёт founder 1-клик /ack.
+# Ничего не совпало + все гейты зелёные → auto-merge (когда фаундер включил auto-merge;
+# до этого — rails-first: раннер паузит на КАЖДОМ PR независимо, см. ADR-011 D1).
+#
+# Классификатор — scripts/autonomy/classify_tripwire.py (stdlib-only, свой мини-YAML-ридер;
+# формат ДОЛЖЕН оставаться в подмножестве: 2-пробельный отступ, кавычки на globs,
+# без block-скаляров). Источник истины для категорий — ADR-011 §Decision D2. Меняешь
+# список — правь ADR и tier-таблицу (conventions §5 / handbook 06 tier 4).
+#
+# Консервативная позиция v1: ЛЮБОЕ совпадение = ack. Контентной проверки миграций
+# (как в ORIION classify) НЕТ, пока нет backend/migrations. Ослаблять — только после
+# накопленного доверия и с правкой ADR-011.
+#
+# requires_device_evidence: true у категории → фаза с таким изменением ОБЯЗАНА приложить
+# device-evidence (реальный OEM-прогон ≥2 устройства) в evidence/, иначе evidence_gap →
+# RUN-QUEUE stuck. Это решение фаундера по нативному фону (главный риск EARAI): растяжка И
+# device-gate одновременно.
+
+version: 1
+policy: pause-and-ack        # matched → prepare + green + wait for founder /ack
+default_when_unmatched: auto-merge
+
+categories:
+  db_migrations:
+    reason: "Миграция БД — риск по существующим таблицам / RLS (tier 4, ADR-005 pgvector→Postgres)"
+    requires_device_evidence: false
+    globs:
+      - "backend/migrations/**"
+      - "backend/alembic/**"
+      - "backend/**/migrations/**"
+
+  auth_account_sessions:
+    reason: "Auth / аккаунт / сессии / entitlement — surface аутентификации и авторизации (tier 4)"
+    requires_device_evidence: false
+    globs:
+      - "backend/**/auth/**"
+      - "backend/**/account/**"
+      - "backend/**/entitlement/**"
+      - "backend/**/session/**"
+
+  billing_money:
+    reason: "Billing / денежные пути — RuStore Pay / CloudPayments / YooKassa / квоты / 54-ФЗ (tier 4, ADR-005)"
+    requires_device_evidence: false
+    globs:
+      - "backend/**/billing/**"
+      - "app/**/billing/**"
+      - "**/*RuStorePay*"
+      - "**/*rustore_pay*"
+      - "**/*cloudpayments*"
+      - "**/*yookassa*"
+
+  secrets_keys_crypto:
+    reason: "Секреты / ключи / STT-LLM-прокси — Yandex SpeechKit / GigaChat / RuStore ключи, keystore, .env (tier 4, ADR-003)"
+    requires_device_evidence: false
+    globs:
+      - "backend/**/stt/**"
+      - "backend/**/llm/**"
+      - "backend/**/proxy/**"
+      - "**/*secret*"
+      - "**/*crypto*"
+      - "**/*keystore*"
+      - "**/.env*"
+      - ".claude/agents/_shared/cost-budget.yaml"
+
+  pii_data_residency:
+    reason: "ПД россиян / аудио-резидентность — ФЗ-242, только RF-облако (tier 4, ADR-003/004)"
+    requires_device_evidence: false
+    globs:
+      - "backend/**/audio/**"
+      - "backend/**/storage/**"
+      - "backend/**/pii/**"
+
+  native_background_permissions:
+    reason: "Нативный фон / разрешения — mic-FGS / CDM / MediaSession / manifest / tile — ГЛАВНЫЙ риск EARAI (tier 4, ADR-002). Растяжка И обязательный device-evidence."
+    requires_device_evidence: true
+    globs:
+      - "app/src/main/AndroidManifest.xml"
+      - "app/**/service/**"
+      - "app/**/*ForegroundService*"
+      - "app/**/*Service.kt"
+      - "app/**/capture/**"
+      - "app/**/*Cdm*"
+      - "app/**/*Companion*"
+      - "app/**/*MediaSession*"
+      - "app/**/*Tile*"
+
+  public_api_contracts:
+    reason: "Слом публичных API/data-контрактов app↔backend (tier 4, ADR-006)"
+    requires_device_evidence: false
+    globs:
+      - "specs/**/contracts/**"
+      - "docs/**/api/**"
+      - "backend/**/openapi*"
+
+# Notes:
+# - Обычная внутренняя логика (UI-экраны без нативного фона, CRUD-эндпоинты, доки, тесты)
+#   НЕ в растяжке — auto-merge при зелёных гейтах (после включения auto-merge фаундером).
+# - Нативный фон — единственная категория с requires_device_evidence: true (решение фаундера,
+#   интервью интеграции): mock-зелёное не закрывает OEM-риск (ADR-010 live-gold).
+# - backend/** глобы forward-looking: backend ещё не существует; растяжка ждёт его появления.
