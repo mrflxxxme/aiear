@@ -1,0 +1,53 @@
+name: ci-evidence
+
+# ADR-011 D3 — gate-integrity enforcement (адаптация ORIION ADR-037).
+#
+# Local-only гейты, которые GitHub CI прогнать НЕ может (live-gold ru-STT/LLM с
+# funded ключами, RuStore Pay sandbox, on-device OEM survival, adversarial audit),
+# обязаны коммитить evidence-артефакт per gate под evidence/<gate>.json и объявить
+# требуемые гейты в evidence/manifest.json. Этот job ассертит, для каждого объявленного
+# гейта: артефакт существует, СВЕЖИЙ (записанный head_sha == PR head), verdict == PASS.
+# Любой промах блокирует мёрж.
+#
+# Non-breaking: PR без evidence/manifest.json (т.е. без local-only гейтов) проходит
+# тривиально. Гейтятся только фазы, которые OPT-IN, закоммитив manifest.
+#
+# Верификатор stdlib-only → bare `python`, без venv, быстро.
+#
+# PR-only by design: это MERGE-гейт. Squash-мёрж переписывает историю, так что
+# на push-to-main записанный head_sha структурно устаревает — audit trail живёт в PR.
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  verify-evidence:
+    name: local-gate evidence — freshness + verdict
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      # Для PR — checkout PR HEAD (не merge-коммита), чтобы evidence/*.json на диске
+      # был ровно тем, что закоммитил гейт, а его head_sha сравнивался с этим коммитом.
+      # fetch-depth > 1: верификатор идёт first-parent мимо evidence-only tail-коммитов.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 25
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Resolve commit-under-test
+        id: sha
+        run: echo "head_sha=${{ github.event.pull_request.head.sha || github.sha }}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify autonomy gate evidence
+        run: python scripts/autonomy/verify_evidence.py --head-sha "${{ steps.sha.outputs.head_sha }}"

@@ -2,6 +2,21 @@
 
 > Пишет `memory-curator` (single-writer). Только добавление, без перезаписи. Формат: `## YYYY-MM-DD — <заголовок>` + что/почему/последствия.
 
+## 2026-07-03 — Интеграция автономной методологии ORIION (ADR-011)
+
+**Что:** перенесён автономный многофазный runner из ORIION (ADR-037) в AIEAR как **ADR-011** + слой `.claude/autonomy/` (tripwire / evidence-schema / escalation-policy / judge-panel / README / BUILD-PLAN / hook-snippet) + `scripts/autonomy/` (8 stdlib-скриптов: classify_tripwire / verify_evidence / run_queue / log_decision / premerge_hook / load_role / check_main_health / provision_env) + `/autonomy:{run,discuss,ack,heal}` + `.github/workflows/ci-evidence.yml` + `.planning/_session-context/{RUN-QUEUE,DECISIONS-LOG}` + handbook `08-AUTONOMOUS-RUNNER.md`.
+
+**Почему:** убрать налог ре-bootstrap (сессия-на-фазу) и вывести фаундера из merge-петли, не потеряв стабильность — гейт-стек становится merge-authority, целостность держится на evidence, привязанном к коммиту.
+
+**Решения интеграции (интервью с фаундером):**
+1. **Глубина = rails-first:** весь стек построен, но **auto-merge ВЫКЛЮЧЕН**; runner паузит на фаундер-ack на каждом PR до Wave-0 S1–S5 зелёных на ≥2 OEM + CI-secrets. Тогда фаундер флипает toggle (BUILD-PLAN §Активация).
+2. **Ширина = автономный слой поверх:** не трогаем рабочий handbook/ADR/спеки; адаптируем tripwire/гейты/роли под Android+backend. НЕ переносим ORIION contracts/gates/risks/re-numbering.
+3. **Нативный фон = двойной гейт (D3-native):** `native_background_permissions` — И трипвайр-категория (ack), И обязательный `device_survival`-evidence (реальный OEM ≥2, mock не закрывает риск EARAI).
+
+**Адаптации под стек AIEAR:** classify_tripwire — stdlib мини-YAML (нет PyYAML/uv), v1 «любое совпадение = ack» (без контентной проверки миграций); load_role — под однофайловые роли `.claude/agents/<role>.md`; гейты — `gradlew` + ruff/mypy/pytest; check_main_health — ci-android/backend/security/evidence; provision_env — root `.env` (Yandex/GigaChat/SaluteSpeech/RuStore). Все 8 скриптов self-протестированы (tripwire/queue/log/load_role/evidence/hook).
+
+**Последствия:** ADR-001..011; STATUS харнесс-таблица обновлена; branch-protection + hook-arming + notify.json — founder one-time actions, отложены до активации auto-merge. Совместимо с текущим воркфлоу (rails-first = сегодняшние «автономные сессии», handbook 06).
+
 ## 2026-06-23 — Bootstrap харнесса (грилл-сессия)
 
 **Что:** создана начальная планировочная структура AIEAR на основе PRD v2.1 — `.planning/` спина, 11 native-субагентов, ADR-001..009, спеки Wave 0 (S1–S6) и MVP-0 (F1–F7), CI-шаблоны, README.
