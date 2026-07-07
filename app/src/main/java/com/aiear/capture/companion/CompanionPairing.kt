@@ -40,6 +40,9 @@ object CompanionPairing {
             Log.w(TAG, "CompanionDeviceManager unavailable on this device")
             return
         }
+        // Spike: an unconstrained BluetoothDeviceFilter lists all BT devices in the system chooser
+        // (consent is still per-device). F1 constrains it to the audio/headset class so only
+        // headphones can arm capture — tracked in memory/cdm-bt.
         val request =
             AssociationRequest.Builder()
                 .addDeviceFilter(BluetoothDeviceFilter.Builder().build())
@@ -80,6 +83,8 @@ object CompanionPairing {
         // the API-34 (minSdk) surface and works here. F1 migrates when minSdk rises.
         @Suppress("DEPRECATION")
         cdm.startObservingDevicePresence(mac.toString())
-        Log.i(TAG, "observing presence for association ${info.id} ($mac)")
+        // Never log the MAC: it is ФЗ-152 personal data and S2 evidence pulls logcat into
+        // committed artifacts. The opaque association id is enough to correlate.
+        Log.i(TAG, "observing presence for association ${info.id}")
     }
 }

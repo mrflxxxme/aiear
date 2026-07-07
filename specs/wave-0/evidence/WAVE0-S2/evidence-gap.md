@@ -10,7 +10,8 @@ is not reproducible on Firebase Test Lab without a paired BT peripheral. It is f
   compiles and the wiring test builds.
 - `CompanionAutostartTest`: the CDM feature + `CompanionCaptureService` are declared/bindable, and
   the mic-FGS **start→armed / stopService→STOPPED** contract the CDM callbacks route to holds
-  (S2-AC3 wiring). Runs on any device/FTL.
+  (S2-AC3 wiring). Runs on any device/FTL — the CDM-feature check `assumeTrue`-skips on an image
+  that lacks the feature (never reds on a capability gap).
 
 **What the founder must run to close the gap (GO = S2-AC1+AC2 on ≥2 OEM, Xiaomi mandatory):**
 1. Install the debug APK, pair headphones in-app (one-time CDM association).

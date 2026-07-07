@@ -4,7 +4,6 @@
 
     <!-- Capture screen -->
     <string name="capture_title">AIEAR — S1 mic-FGS spike</string>
-    <string name="capture_hint">Запусти захват, погаси экран, проверь heartbeat-лог.</string>
     <string name="action_start">Старт захвата</string>
     <string name="action_stop">Стоп захвата</string>
     <string name="status_running">Захват активен</string>

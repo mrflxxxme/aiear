@@ -12,6 +12,7 @@ import com.aiear.capture.companion.CompanionCaptureService
 import com.aiear.capture.service.MicForegroundService
 import org.junit.After
 import org.junit.Assert.assertTrue
+import org.junit.Assume
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -44,7 +45,6 @@ class CompanionAutostartTest {
         val pkg = context.packageName
         shell("pm grant $pkg android.permission.RECORD_AUDIO")
         shell("pm grant $pkg android.permission.POST_NOTIFICATIONS")
-        shell("pm grant $pkg android.permission.BLUETOOTH_CONNECT")
         shell("monkey -p $pkg -c android.intent.category.LAUNCHER 1")
         device.waitForIdle()
     }
@@ -56,8 +56,10 @@ class CompanionAutostartTest {
 
     @Test
     fun cdmFeature_and_service_declared() {
-        assertTrue(
-            "Device lacks FEATURE_COMPANION_DEVICE_SETUP — CDM autostart cannot work here.",
+        // Assume, not assert: an image without the CDM feature (e.g. a stripped ATD) is SKIPPED,
+        // not failed — the feature is a device capability, not a code defect.
+        Assume.assumeTrue(
+            "Device lacks FEATURE_COMPANION_DEVICE_SETUP — CDM autostart cannot work here (skipped).",
             context.packageManager.hasSystemFeature(PackageManager.FEATURE_COMPANION_DEVICE_SETUP),
         )
         val intent =

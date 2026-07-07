@@ -1,6 +1,7 @@
 package com.aiear
 
 import android.Manifest
+import android.companion.CompanionDeviceManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -11,16 +12,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
+import androidx.core.content.getSystemService
 import com.aiear.capture.companion.CompanionPairing
 import com.aiear.capture.service.MicForegroundService
 import com.aiear.ui.CaptureScreen
 import com.aiear.ui.theme.AiearTheme
 
 /**
- * Single screen. Requests RECORD_AUDIO (+ POST_NOTIFICATIONS on API 33+, + BLUETOOTH_CONNECT for
- * S2 CDM) up front, then hosts: a "pair headphones" action (S2 one-time association) and the
- * Start/Stop button. Starting the mic-FGS from this foreground Activity is the ADR-002-legal
- * manual start; the CDM path (CompanionCaptureService) is the legal *background* start.
+ * Single screen. Requests RECORD_AUDIO (+ POST_NOTIFICATIONS on API 33+) up front, then hosts:
+ * a "pair headphones" action (S2 one-time CDM association) and the Start/Stop button. Starting the
+ * mic-FGS from this foreground Activity is the ADR-002-legal manual start; the CDM path
+ * (CompanionCaptureService) is the legal *background* start.
  */
 class MainActivity : ComponentActivity() {
     private var capturing by mutableStateOf(false)
@@ -41,6 +43,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestRuntimePermissions()
+        paired = hasExistingAssociation()
         setContent {
             AiearTheme {
                 CaptureScreen(
@@ -58,9 +61,12 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             perms += Manifest.permission.POST_NOTIFICATIONS
         }
-        perms += Manifest.permission.BLUETOOTH_CONNECT
         permissionLauncher.launch(perms.toTypedArray())
     }
+
+    /** Restore the paired flag from existing CDM associations (survives a plain relaunch). */
+    private fun hasExistingAssociation(): Boolean =
+        getSystemService<CompanionDeviceManager>()?.myAssociations?.isNotEmpty() ?: false
 
     /** S2 one-time onboarding: associate the headphones so the CDM background autostart applies. */
     private fun pairHeadphones() {

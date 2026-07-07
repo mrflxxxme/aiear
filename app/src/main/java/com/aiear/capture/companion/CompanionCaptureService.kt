@@ -1,8 +1,10 @@
 package com.aiear.capture.companion
 
+import android.Manifest
 import android.companion.AssociationInfo
 import android.companion.CompanionDeviceService
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.util.Log
 import androidx.core.content.ContextCompat
 import com.aiear.capture.service.MicForegroundService
@@ -22,6 +24,14 @@ import com.aiear.capture.service.MicForegroundService
  */
 class CompanionCaptureService : CompanionDeviceService() {
     override fun onDeviceAppeared(associationInfo: AssociationInfo) {
+        // Without RECORD_AUDIO a microphone-typed startForeground throws on API 34. Skip (no audio
+        // without permission is privacy-correct); the user re-grants in onboarding.
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            Log.w(TAG, "onDeviceAppeared assoc=${associationInfo.id}: RECORD_AUDIO not granted — skip")
+            return
+        }
         Log.i(TAG, "onDeviceAppeared assoc=${associationInfo.id} -> start mic-FGS")
         // Legal background FGS start (REQUEST_COMPANION_START_FOREGROUND_SERVICES_FROM_BACKGROUND).
         ContextCompat.startForegroundService(this, MicForegroundService.startIntent(this))

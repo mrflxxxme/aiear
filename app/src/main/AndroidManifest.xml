@@ -13,14 +13,14 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- S2: CompanionDeviceManager background autostart on BT headphone connect.
-         BLUETOOTH_CONNECT (runtime, API 31+) to resolve the associated device;
          REQUEST_COMPANION_START_FOREGROUND_SERVICES_FROM_BACKGROUND (API 34) legalises raising
          the mic-FGS from CompanionCaptureService.onDeviceAppeared while in the background —
-         the ONLY ADR-002-legal background start path. -->
+         the ONLY ADR-002-legal background start path. The CDM association + presence-observation
+         need no app-held BLUETOOTH_CONNECT (the system chooser holds the BT privilege); F1 re-adds
+         it only if it touches BluetoothDevice/BluetoothAdapter directly. -->
     <uses-feature
         android:name="android.software.companion_device_setup"
         android:required="true" />
-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.REQUEST_COMPANION_START_FOREGROUND_SERVICES_FROM_BACKGROUND" />
 
     <!--

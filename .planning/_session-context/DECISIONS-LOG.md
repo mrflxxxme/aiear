@@ -19,3 +19,9 @@
 - Decision: onDeviceDisappeared -> MicForegroundService STOP (stopForeground+stopSelf); never keep the mic open without headphones
 - Rationale: Privacy + battery + AC3; reuses the existing STOP action, no new stop path
 - Reversibility: reversible
+
+### 2026-07-07T12:27:05Z | phase WAVE0-S2 | impl
+- Fork: Review-driven: BLUETOOTH_CONNECT necessity + MAC-in-logs (reviewer-security/reviewer gate)
+- Decision: Dropped BLUETOOTH_CONNECT (CDM path needs none — least-privilege); scrubbed BT MAC from logs (ФЗ-152 PII); guarded RECORD_AUDIO in onDeviceAppeared; assertTrue->assumeTrue on CDM-feature check; restored paired from myAssociations
+- Rationale: Both review gates PASS with no compile-blockers; applied 1 security-major (MAC), 1 test-major (assume), and least-privilege minors before the founder-ack merge
+- Reversibility: reversible
