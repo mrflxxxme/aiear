@@ -6,10 +6,13 @@
 
 | Термин | Значение |
 |---|---|
+| **AIEAR** | **Рабочее название** продукта (финальный бренд TBD — Q10). Wake-word — **«Buddy»**, произносится «Эй, бадди». |
 | **Capture / захват** | Сессия записи короткой голосовой реплики пользователя. |
 | **Thought / мысль** | Единица захвата: `{заголовок, тип, теги, нормализованный текст}` после ИИ-структурирования. |
 | **Type / тип мысли** | Классификация: `задача` / `идея` / `напоминание` / `заметка`. |
-| **Destination** | Куда фиксируется мысль: Obsidian / Календарь / Напоминания / Telegram / Share-Markdown. |
+| **Destination** | Куда экспортируется мысль из inbox. Must: Notes (inbox) / Календарь / Напоминания / Telegram / Share-Markdown; should: Obsidian (ADR-015). |
+| **Inbox / inbox-first** | Каждая захваченная мысль **сначала** персистится во встроенное хранилище (Notes) приложения; destination'ы — асинхронные повторяемые экспорты из inbox (ADR-015). |
+| **device-token** | Анонимный непрозрачный токен устройства — идентичность MVP-0 без регистрации; в MVP-1 опционально сливается с аккаунтом VK ID / Яндекс ID (ADR-012). |
 | **CTA** | Предлагаемое действие («в напоминания на завтра 9:00»), подтверждаемое пользователем. |
 | **Fixation / фиксация** | Доставка мысли в destination (North Star меряет именно дошедшие до destination). |
 | **Voice command / голосовая команда** | Управление сессией голосом без касания экрана (F7): разметка, выбор destination, подтверждение/отмена. |
@@ -18,11 +21,12 @@
 
 | Термин | Значение |
 |---|---|
-| **mic-FGS** | Foreground Service с типом `FOREGROUND_SERVICE_MICROPHONE` (Android 14+) для фонового захвата при screen-off. |
+| **mic-FGS** | Foreground Service с типом `FOREGROUND_SERVICE_MICROPHONE` для фонового захвата при screen-off (полноценно — Full-tier, Android 14+). |
+| **Tier Full / Degraded** | Тиры возможностей захвата при minSdk 31 (ADR-014): **Full** (Android 14+) — screen-off фоновый захват; **Degraded** (12–13) — захват при активном приложении/включённом экране. |
 | **CDM** | `CompanionDeviceManager` — легальный автозапуск сервиса по подключению наушников из фона. |
 | **Tile** | Quick Settings tile — ручной лаунчер сессии (0 батареи, 0 риска). |
 | **media-button hook** | `KEYCODE_HEADSETHOOK` — in-session-триггер, когда AIEAR — активная медиа-сессия (ненадёжно по брендам). |
-| **wake-word** | On-device hotword «Эй, EARAI» на **взведённом** сервисе пока наушники подключены (Picovoice Porcupine / Vosk). Спайк S6. |
+| **wake-word** | On-device hotword «Эй, бадди» (wake-word «Buddy») на **взведённом** сервисе пока наушники подключены (Vosk-keyword / Picovoice Porcupine). Спайк S6. |
 | **default-ассистент** | `ROLE_ASSISTANT` + `VoiceInteractionService` — единственный путь к always-on hotword. Только V1 «Power Mode». |
 | **OEM-killer** | Прошивка (MIUI/Honor/Transsion), агрессивно убивающая фоновые сервисы. Главный риск (R-OEM). |
 
