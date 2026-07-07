@@ -6,7 +6,7 @@ status: approved
 tier: 4
 pipeline: fullstack
 deps: [MVP0-F2, MVP0-F3]
-adr_refs: [ADR-004]
+adr_refs: [ADR-004, ADR-012, ADR-013, ADR-015]
 ui_spec: true
 prd_refs: ["§8 MVP-0 F5", "§10.2"]
 ---
@@ -17,17 +17,19 @@ prd_refs: ["§8 MVP-0 F5", "§10.2"]
 Как пользователь, я хочу видеть историю пойманных мыслей с поиском и синхронизацией между сессиями/устройствами, чтобы мой «второй мозг» был доступен и не терялся.
 
 ## Scope
-- Локальная БД заметок (Room) + история с поиском.
-- Sync в RF-облако (backend + PostgreSQL/pgvector для поиска).
-- Поиск по тексту/тегам/типу.
+- **Локальный стор уже создан в F1 (ADR-015: Room + SQLCipher, статусная модель)** — F5 строится **поверх** него: история-UI, поиск, облачный sync. F5 не создаёт БД заново.
+- История с поиском по тексту/тегам/типу (Room FTS поверх F1-стора).
+- Sync в RF-облако (backend + PostgreSQL/pgvector для семантического поиска).
 
 ## Non-scope
-- Кросс-устройство в полном объёме (база под это закладывается, UX — позже). Длинная история Pro-тарифа — MVP-1.
+- Создание локальной персистенции (сделано в F1). Кросс-устройство в полном объёме (база под это закладывается через device→account, ADR-012; UX — MVP-1). Длинная история Pro-тарифа — MVP-1.
 
 ## Контракт / интерфейсы
-- **Sync:** `POST /v1/sync` (delta upload/download), conflict-resolution last-write-wins + timestamp.
+- **Sync:** `POST /v1/sync` — delta-протокол канонизирован в [`specs/_contracts/openapi.yaml`](../_contracts/openapi.yaml): `since_cursor` + `upserts[]` + `deletions[]` (tombstone), конфликты — **LWW по `updated_at`**; спека не дублирует схемы.
+- **Auth (ADR-012):** `Authorization: Bearer <device-token>`; данные привязаны к device-scope (после привязки аккаунта в MVP-1 — к account-scope, миграция без перекройки: owner_id с F1).
 - **Search:** локальный (Room FTS) + серверный (pgvector) для семантики.
-- **Модель:** `Thought` (из F2) + `synced_at`, `local_id`/`server_id`.
+- **Модель:** `Thought` — [`specs/_contracts/thought.schema.json`](../_contracts/thought.schema.json); локальные служебные поля sync (`synced_at`, курсор) — вне канонической схемы.
+- **Embedding-модель для pgvector:** выбор отложен в backend-конфиг — **документированное допущение (на ратификацию в PR фазы)**: не блокер фазы, семантический поиск деградирует до FTS до выбора модели.
 
 ## Acceptance criteria (EARS)
 - **MVP0-F5-AC1** — WHEN мысль зафиксирована, THE SYSTEM SHALL сохранить её в локальную историю немедленно (offline-first).
@@ -47,7 +49,7 @@ prd_refs: ["§8 MVP-0 F5", "§10.2"]
 - Instrumented: офлайн→онлайн переход.
 
 ## Data / privacy
-Локальная БД шифрована; серверное хранение — RF-облако, шифрование в покое/транзите (ADR-004).
+Локальная БД шифрована **SQLCipher, ключ — в Android Keystore** (стор F1); серверное хранение — RF-облако (Yandex Cloud ru-central1, ADR-013), шифрование в покое/транзите (ADR-004).
 
 ## Model hints
 - Room/FTS/sync-логика — T2/T3 (конфликты — T3).
