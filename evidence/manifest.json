@@ -1,0 +1,5 @@
+{
+  "phase": "WAVE0-S2",
+  "required_gates": ["device_survival"],
+  "_note": "ADR-011 D3-native: WAVE0-S2 touches the native-background tripwire (CompanionDeviceService + REQUEST_COMPANION_START_FOREGROUND_SERVICES_FROM_BACKGROUND), so device_survival is a REQUIRED gate. Until the founder runs specs/wave-0/evidence/WAVE0-S2/run-on-device.sh on >=2 OEM (Xiaomi mandatory) and commits evidence/device_survival.json (verdict PASS, head_sha = the code commit), ci-evidence is RED BY DESIGN — a native spike must not merge without on-device proof. This is the rails working, not a code failure."
+}

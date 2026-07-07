@@ -12,6 +12,17 @@
     <!-- Required (API 33+) to show the ongoing FGS notification (S1-AC2). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- S2: CompanionDeviceManager background autostart on BT headphone connect.
+         BLUETOOTH_CONNECT (runtime, API 31+) to resolve the associated device;
+         REQUEST_COMPANION_START_FOREGROUND_SERVICES_FROM_BACKGROUND (API 34) legalises raising
+         the mic-FGS from CompanionCaptureService.onDeviceAppeared while in the background —
+         the ONLY ADR-002-legal background start path. -->
+    <uses-feature
+        android:name="android.software.companion_device_setup"
+        android:required="true" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.REQUEST_COMPANION_START_FOREGROUND_SERVICES_FROM_BACKGROUND" />
+
     <!--
       ADR-002 hard bans — deliberately ABSENT (their absence is a conformance signal):
         * NO <receiver> for android.intent.action.BOOT_COMPLETED  (banned mic auto-start, Android 14+)
@@ -45,6 +56,20 @@
             android:name=".capture.service.MicForegroundService"
             android:exported="false"
             android:foregroundServiceType="microphone" />
+
+        <!-- S2: CDM presence-observation service. The system binds it
+             (BIND_COMPANION_DEVICE_SERVICE) and calls onDeviceAppeared / onDeviceDisappeared for
+             associated + observed devices. exported=true is required for the system to bind it;
+             the BIND permission restricts the binder to the OS. This is the legal background
+             trigger that raises the mic-FGS on headphone connect. -->
+        <service
+            android:name=".capture.companion.CompanionCaptureService"
+            android:exported="true"
+            android:permission="android.permission.BIND_COMPANION_DEVICE_SERVICE">
+            <intent-filter>
+                <action android:name="android.companion.CompanionDeviceService" />
+            </intent-filter>
+        </service>
 
     </application>
 

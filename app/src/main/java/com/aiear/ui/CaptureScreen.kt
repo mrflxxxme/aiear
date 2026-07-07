@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -19,13 +20,16 @@ import com.aiear.R
 import com.aiear.ui.theme.AiearTheme
 
 /**
- * The single spike screen: a title, a hint, a live status line, and one button that toggles
- * Start/Stop of the mic-FGS. The button is the foreground start surface (ADR-002).
+ * The single spike screen. S1: a Start/Stop button that is the foreground mic-FGS start surface
+ * (ADR-002). S2 adds a "pair headphones" action + a paired-status line: once paired, connecting
+ * the headphones arms capture from the background via CompanionCaptureService (no UI needed).
  */
 @Composable
 fun CaptureScreen(
     capturing: Boolean,
+    paired: Boolean,
     onToggle: () -> Unit,
+    onPair: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -42,10 +46,24 @@ fun CaptureScreen(
                 style = MaterialTheme.typography.headlineSmall,
             )
             Text(
-                text = stringResource(R.string.capture_hint),
+                text = stringResource(R.string.s2_hint),
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 8.dp, bottom = 24.dp),
             )
+            Text(
+                text =
+                    stringResource(
+                        if (paired) R.string.status_paired else R.string.status_unpaired,
+                    ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.secondary,
+            )
+            OutlinedButton(
+                onClick = onPair,
+                modifier = Modifier.width(220.dp).padding(top = 8.dp, bottom = 16.dp),
+            ) {
+                Text(text = stringResource(R.string.action_pair))
+            }
             Text(
                 text =
                     stringResource(
@@ -73,7 +91,7 @@ fun CaptureScreen(
 @Composable
 private fun CaptureScreenIdlePreview() {
     AiearTheme {
-        CaptureScreen(capturing = false, onToggle = {})
+        CaptureScreen(capturing = false, paired = false, onToggle = {}, onPair = {})
     }
 }
 
@@ -81,6 +99,6 @@ private fun CaptureScreenIdlePreview() {
 @Composable
 private fun CaptureScreenRunningPreview() {
     AiearTheme {
-        CaptureScreen(capturing = true, onToggle = {})
+        CaptureScreen(capturing = true, paired = true, onToggle = {}, onPair = {})
     }
 }

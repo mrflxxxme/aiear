@@ -10,6 +10,12 @@
     <string name="status_running">Захват активен</string>
     <string name="status_idle">Захват остановлен</string>
 
+    <!-- S2 — CDM headphone pairing / background autostart -->
+    <string name="s2_hint">S2: сопряги наушники, закрой приложение, подключи их — захват должен взвестись сам.</string>
+    <string name="action_pair">Сопрячь наушники</string>
+    <string name="status_paired">Наушники сопряжены — автозапуск по подключению</string>
+    <string name="status_unpaired">Наушники не сопряжены</string>
+
     <!-- FGS notification -->
     <string name="notif_channel_name">Захват аудио</string>
     <string name="notif_channel_desc">Постоянное уведомление активного mic-захвата.</string>
