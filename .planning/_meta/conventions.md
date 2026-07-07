@@ -25,6 +25,7 @@ docs/                     # PRD + ресёрч (источник продукт�
   agent-handbook/         # как работает харнесс
   decisions/ADR-*.md      # ADR
   roadmap/<wave>.md       # волны + gate-критерии
+  roadmap/phase-queue.yaml # машиночитаемая очередь фаз (A6): id/deps/status; runner берёт «что дальше» отсюда
   memory/<domain>.md      # durable уроки (индексируются в AgentDB)
   _handoffs/<phase>/*.md  # лёгкие хендоф-артефакты (эфемерные)
 specs/
@@ -32,7 +33,9 @@ specs/
   <wave>/<PHASE>.md        # spec фазы (EARS)
   <wave>/PLAN-<PHASE>.md   # план фазы (planner)
   <wave>/AUDIT-<PHASE>.md  # phase-close аудит
+  <wave>/_grill-<PHASE>.md # артефакт стадии 0 «discuss (grill)» (handbook 02)
   <wave>/evidence/<PHASE>/ # evidence-бандл (ADR-010): self-run, live-gold, FTL, coverage
+                           # + машинные manifest.json / <gate>.json (ADR-011 D3, единый путь — A5)
 .claude/agents/           # native-субагенты (1 файл = 1 роль)
 app/                      # Android (Kotlin) — появится в MVP-0
 backend/                  # FastAPI — появится в MVP-0
@@ -84,6 +87,8 @@ deciders: [founder]
 
 ИИ-агенты **не имеют merge-прерогативы** на tier 3+. Зелёный CI + аппрув ревьюеров + **evidence-бандл (ADR-010)** — необходимо, но не достаточно.
 
+> ⚠️ **Rails-first (ADR-011 D1):** пока auto-merge не активирован фаундером, **ВСЕ тиры (вкл. 1–2) проходят через founder-ack** — «авто-merge»/«ack» в таблице описывают целевое состояние после активации (Wave-0-green + CI-secrets + рабочий evidence-контур).
+
 ## 6. Хендоф-события (тип в YAML-поле `event`)
 
 Лёгкий аналог CloudEvents — компактные имена `<context>.<event>`:
@@ -93,6 +98,7 @@ deciders: [founder]
 
 ## 7. Git / commit
 
-- Trunk-based, короткие ветки `phase/<PHASE>-<slug>` или `wave/<wave>-<topic>`.
+- Trunk-based, короткие ветки. **Каноническая конвенция веток (A8, grill 2026-07-07): `claude/*`** — фактические ветки харнесса (harness сам их так именует; под runner'ом — `claude/auto-<PHASE>-<slug>`).
+- ~~`phase/<PHASE>-<slug>`~~, ~~`wave/<wave>-<topic>`~~ — **deprecated** (историческая запись; ранее сосуществовали 4 несовместимые конвенции — канонизирована фактическая).
 - Conventional commits: `feat(MVP0-F1): ...`, `fix(...)`, `docs(...)`, `chore(...)`, `test(...)`.
 - 1 PR на фазу. Тело PR — из шаблона [`06-PR-WORKFLOW.md`](../agent-handbook/06-PR-WORKFLOW.md).

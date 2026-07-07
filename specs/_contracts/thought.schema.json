@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aiear.app/contracts/v1/thought.schema.json",
+  "title": "Thought",
+  "description": "Каноническая единица «мысли» AIEAR (inbox-first, ADR-015). Единственный источник истины схемы: specs/_contracts/thought.schema.json. Статусная модель: captured → transcribed → structured → exported (failed — терминальный сбой шага). Разрешение конфликтов sync — LWW по updated_at (openapi.yaml /v1/sync).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "created_at",
+    "updated_at",
+    "raw_transcript",
+    "type",
+    "tags",
+    "suggested_destination",
+    "status",
+    "source",
+    "lang"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "UUID мысли; генерируется клиентом при захвате (offline-first). Ключ идемпотентности экспортов (F3) и sync (F5)."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Момент захвата, RFC3339 (UTC или с оффсетом)."
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Последнее изменение, RFC3339. Основа LWW при конфликте sync."
+    },
+    "raw_transcript": {
+      "type": "string",
+      "description": "Сырой транскрипт STT (или введённый текст при source=manual). Никогда не перезаписывается структурированием."
+    },
+    "refined_text": {
+      "type": ["string", "null"],
+      "description": "Нормализованный/очищенный текст от LLM (F2). null до статуса structured или при провале структурирования."
+    },
+    "type": {
+      "type": "string",
+      "enum": ["idea", "task", "reminder", "meeting_note", "journal", "question", "other"],
+      "description": "Тип мысли. До структурирования и при неуверенности LLM — other (правило промпта structure_v1)."
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true,
+      "default": [],
+      "description": "Теги от LLM/пользователя; пустой массив допустим."
+    },
+    "suggested_destination": {
+      "type": "string",
+      "enum": ["inbox", "obsidian", "calendar", "telegram", "share"],
+      "default": "inbox",
+      "description": "Предложенный destination-экспорт (ADR-015: любой destination — экспорт из inbox; inbox = «остаётся во встроенных заметках»)."
+    },
+    "suggested_cta": {
+      "type": ["object", "null"],
+      "description": "Предложенное действие (CTA) от LLM; null, если действия нет.",
+      "additionalProperties": false,
+      "required": ["action"],
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": ["create_event", "create_reminder", "send_telegram", "none"]
+        },
+        "when": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "RFC3339-время действия, распарсенное LLM (structure_v1) из ЯВНО упомянутого в реплике. null, если время не упомянуто. Отдельного клиентского парсера времени нет."
+        },
+        "payload": {
+          "type": "object",
+          "description": "Параметры действия (напр. title события, текст сообщения). Свободная форма, валидируется адаптером destination (F3).",
+          "additionalProperties": true
+        }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": ["captured", "transcribed", "structured", "exported", "failed"],
+      "description": "Статусная модель inbox-first (ADR-015). captured — аудио/факт захвата персистирован; transcribed — есть raw_transcript; structured — LLM заполнил type/refined_text/CTA; exported — доставлено хотя бы в один внешний destination; failed — терминальный сбой шага (retry-очередь исчерпана)."
+    },
+    "source": {
+      "type": "string",
+      "enum": ["cloud_stt", "ondevice_stt", "manual"],
+      "description": "Происхождение транскрипта: облачный STT (F1), on-device черновой STT (F6) или ручной ввод. Ре-транскрипция F6 меняет ondevice_stt → cloud_stt."
+    },
+    "lang": {
+      "const": "ru",
+      "description": "MVP — ru-only (CLAUDE.md §1)."
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Уверенность LLM в классификации (0..1). Отсутствует до структурирования. Низкая уверенность → type=other (правило промпта)."
+    }
+  }
+}

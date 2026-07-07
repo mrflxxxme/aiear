@@ -53,9 +53,10 @@ Legend: ✅ done · 🚧 in progress · ⬜ todo · ⏸ deferred (founder-owned)
 
 ## Активация auto-merge (D1) — ⏸ ОТЛОЖЕНА (rails-first, решение фаундера)
 
-Условия активации (оба):
+Условия активации (все три; 3-е добавлено grill 2026-07-07, решение 4.4):
 1. ⬜ **Wave 0 спайки S1–S5 зелёные на ≥2 OEM** (главный нативный риск снят реальным device-evidence).
 2. ⬜ **CI подключён к secrets** — ci-android (FTL: `GCP_SA_KEY`), ci-backend (live), ci-security.
+3. ⬜ **Evidence-контур реально работает** — единый путь `specs/<wave>/evidence/<PHASE>/` (машинный `manifest.json` + `<gate>.json` рядом с человеческим бандлом), машиночитаемый DoD, непустой manifest обязателен для нативных/AI-фаз, `verify_evidence.py --require` фейлит при отсутствии/пустоте манифеста — подтверждено хотя бы одной фазой, прошедшей контур end-to-end.
 
 Затем founder one-time actions:
 - ⬜ branch protection (require PR + `ci-android`/`ci-backend`/`ci-security`/`ci-evidence` + linear + enforce_admins + delete-branch-on-merge).

@@ -26,6 +26,8 @@ deciders: [founder]
 4. **Где live невозможно — явный gap, не тихий скип.** Нет ключей/устройства/sandbox → агент эмитит `status: blocked` (`blocker_type: needs-live-evidence`) ИЛИ помечает `evidence_gap` в хендофе с причиной и что нужно (creds/device/sandbox), и поднимает фаундеру. **Молчаливый mock-зелёный запрещён.**
 5. **No evidence = fail.** На phase-close аудите линза `live-gold/evidence` обязательна; нет воспроизводимого evidence на критерий → вердикт `fail` (или `pass-with-followups` только если gap явно задекларирован и принят фаундером).
 
+> **Поправка 2026-07-07 (grill, решение 4.1) — native-gap гибрид.** Единая формулировка (снимает противоречие с ADR-011 D3-native «нет device-evidence → stuck»): **нативная фаза без device-evidence МОЖЕТ закрыться `pass-with-followups`; runner продолжает следующую фазу; merge PR в `main` блокирован до device-evidence ИЛИ явного founder-ack на gap (RUN-QUEUE-запись).** Gap по-прежнему явный (п. 4), «тихий mock-зелёный» по-прежнему запрещён — гибрид меняет только то, что gap не стопорит конвейер, а стопорит **мёрж**. Протокол: [`GRILL-2026-07-07-project-docs.md`](../_session-context/GRILL-2026-07-07-project-docs.md).
+
 Где: evidence-бандл — `specs/<wave>/evidence/<PHASE>/` (тест-репорты, ссылки на FTL-прогоны, live-gold-результаты, device-логи, coverage). Ссылается из хендоф-поля `evidence`, `AUDIT-<PHASE>.md` и тела PR.
 
 ## Последствия

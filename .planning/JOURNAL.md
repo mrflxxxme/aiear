@@ -2,6 +2,16 @@
 
 > Пишет `memory-curator` (single-writer). Только добавление, без перезаписи. Формат: `## YYYY-MM-DD — <заголовок>` + что/почему/последствия.
 
+## 2026-07-07 — Grill по проектной документации: 16 решений фаундера + A1–A9
+
+**Что:** проведено углублённое интервью фаундера (4 раунда × 4 вопроса) по итогам тройного аудита (спеки · продуктовый слой · методология) — **16 ратифицированных решений** + **9 производных агентских решений A1–A9**. Протокол: [`_session-context/GRILL-2026-07-07-project-docs.md`](_session-context/GRILL-2026-07-07-project-docs.md). Правки разнесены одним PR: созданы **ADR-012 (auth) / ADR-013 (Yandex Cloud) / ADR-014 (minSdk 31 + тиры) / ADR-015 (inbox-first Notes)**, контракты **`specs/_contracts/`** (openapi.yaml + thought.schema.json — A4), очередь фаз **`roadmap/phase-queue.yaml`** (A6), founder-чеклист **`ONBOARDING-SECRETS.md`** (реш. 4.3), стадия **discuss (grill)** канонизирована в handbook 02, машинный spec-гейт `status: approved` (A7), ветки `claude/*` канонизированы (A8).
+
+**Почему:** автономный цикл (ADR-011) не мог исполнять роадмап «точно и автоматически»: две несовместимые системы evidence, противоречие ADR-010↔ADR-011 по native-gap, очередь фаз в прозе, неавтоматизированный spec-гейт, 4 конвенции веток, ручной контур фаундера не сведён.
+
+**Ключевые методологические решения:** (1) **единый путь evidence (A5)** — машинные `manifest.json`+`<gate>.json` внутри `specs/<wave>/evidence/<PHASE>/`; `verify_evidence.py` — discovery + `--require` (нет/пустой манифест = fail для native/AI-фаз); (2) **native-gap гибрид (4.1)** — фаза без device-evidence закрывается `pass-with-followups`, runner продолжает, merge в main блокирован до device-evidence ИЛИ founder-ack (поправки в ADR-010 §Решение п.5 + ADR-011 §Поправка); (3) **3-е условие auto-merge (4.4)** — «evidence-контур реально работает»; (4) Docker-эмулятор фаундера — smoke-ярус device-петли (4.2); (5) провижининг 4 секретов за 1–2 недели (4.3).
+
+**Последствия:** runner берёт «что дальше» из phase-queue.yaml, не из прозы STATUS; ADR-011 D3-native действует в гибридной семантике; tier-1/2 auto-merge явно помечены приостановленными под rails-first; ручной контур фаундера — один чеклист с ⬜-статусами. Q1/Q3/Q9 закрыты; Q2 (тарифы) остаётся open.
+
 ## 2026-07-03 — Интеграция автономной методологии ORIION (ADR-011)
 
 **Что:** перенесён автономный многофазный runner из ORIION (ADR-037) в AIEAR как **ADR-011** + слой `.claude/autonomy/` (tripwire / evidence-schema / escalation-policy / judge-panel / README / BUILD-PLAN / hook-snippet) + `scripts/autonomy/` (8 stdlib-скриптов: classify_tripwire / verify_evidence / run_queue / log_decision / premerge_hook / load_role / check_main_health / provision_env) + `/autonomy:{run,discuss,ack,heal}` + `.github/workflows/ci-evidence.yml` + `.planning/_session-context/{RUN-QUEUE,DECISIONS-LOG}` + handbook `08-AUTONOMOUS-RUNNER.md`.

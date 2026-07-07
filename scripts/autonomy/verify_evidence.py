@@ -1,17 +1,30 @@
 #!/usr/bin/env python3
 """Verify autonomy gate evidence artifacts against the current commit.
 
-Per ADR-011 D3 (AIEAR adaptation of ORIION ADR-037). A phase that runs
-local-only gates (live-gold ru-STT/LLM, RuStore Pay sandbox, on-device OEM
-survival, adversarial audit) which GitHub CI cannot run MUST commit an evidence
-artifact per gate under ``evidence/<gate>.json`` and declare the required gates
-in ``evidence/manifest.json``. This script (invoked by the ``ci-evidence``
-workflow AND runnable locally) asserts, for every declared gate: the artifact
-exists, is fresh (``head_sha`` == the commit under test), and ``verdict ==
-"PASS"``. Any miss -> non-zero exit -> merge blocked.
+Per ADR-011 D3 (AIEAR adaptation of ORIION ADR-037) + amendment 2026-07-07
+(grill, decision A5: single evidence path). A phase that runs local-only gates
+(live-gold ru-STT/LLM, RuStore Pay sandbox, on-device OEM survival, adversarial
+audit) which GitHub CI cannot run MUST commit an evidence artifact per gate
+under ``specs/<wave>/evidence/<PHASE>/<gate>.json`` and declare the required
+gates in ``specs/<wave>/evidence/<PHASE>/manifest.json`` -- INSIDE the human
+evidence bundle (ADR-010), not in a repo-root ``evidence/`` dir. This script
+(invoked by the ``ci-evidence`` workflow AND runnable locally) asserts, for
+every declared gate: the artifact exists, is fresh (``head_sha`` == the commit
+under test), and ``verdict == "PASS"``. Any miss -> non-zero exit -> merge
+blocked.
 
-Non-breaking by design: no manifest, or an empty ``required_gates`` list, means
-the phase has no local-only gates -> exit 0.
+Default mode discovers every ``specs/*/evidence/*/manifest.json`` and verifies
+them all; ``--phase <PHASE>`` narrows discovery to one phase. No manifest found
+-> exit 0 (phase without local-only gates), UNLESS ``--require`` is passed:
+native/AI phases (tripwire ``requires_device_evidence`` / live-gold per
+ADR-011 D3-native) MUST have a NON-EMPTY manifest, so ``--require`` turns
+"no manifest / empty required_gates" into a hard FAIL. The runner passes
+``--require`` for such phases; missing-manifest-is-OK is only for phases with
+no local-only gates.
+
+Backward compatible: ``--manifest PATH`` pins a single explicit manifest
+(legacy call shape); ``--evidence-dir`` overrides the artifact dir (defaults
+to the manifest's own directory).
 
 Stdlib-only so CI can run it as bare ``python scripts/autonomy/verify_evidence.py``
 without a virtualenv.
@@ -131,22 +144,19 @@ def _validate_evidence(payload: Any, gate: str, expected_sha: str) -> list[str]:
     return problems
 
 
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--manifest", default="evidence/manifest.json")
-    parser.add_argument("--evidence-dir", default="evidence")
-    parser.add_argument(
-        "--head-sha",
-        default=None,
-        help="Commit the gates must have run against. Defaults to `git rev-parse HEAD`.",
-    )
-    args = parser.parse_args(argv)
+def _discover_manifests(phase: str | None) -> list[Path]:
+    """All ``specs/*/evidence/<PHASE>/manifest.json`` (single evidence path, A5)."""
+    pattern = f"specs/*/evidence/{phase}/manifest.json" if phase else "specs/*/evidence/*/manifest.json"
+    return sorted(Path(".").glob(pattern))
 
-    manifest_path = Path(args.manifest)
-    if not manifest_path.exists():
-        print(f"[ci-evidence] no manifest at {manifest_path} -no local-only gates to verify. OK.")
-        return 0
 
+def _verify_manifest(
+    manifest_path: Path,
+    evidence_dir_override: str | None,
+    head_sha_arg: str | None,
+    require: bool,
+) -> int:
+    """Verify one manifest's declared gates. Returns the failure count."""
     try:
         manifest = _load_json(manifest_path)
     except (json.JSONDecodeError, OSError) as exc:
@@ -155,13 +165,29 @@ def main(argv: list[str] | None = None) -> int:
 
     required = manifest.get("required_gates", []) if isinstance(manifest, dict) else None
     if not isinstance(required, list):
-        print("[ci-evidence] FAIL: manifest.required_gates must be a list")
+        print(f"[ci-evidence] FAIL: {manifest_path}: required_gates must be a list")
         return 1
+
+    declared_phase = manifest.get("phase") if isinstance(manifest, dict) else None
+    dir_phase = manifest_path.parent.name
+    if declared_phase and declared_phase != dir_phase:
+        print(
+            f"[ci-evidence] WARN: {manifest_path}: manifest.phase {declared_phase!r} "
+            f"!= evidence dir {dir_phase!r}"
+        )
+
     if not required:
-        print("[ci-evidence] manifest declares no required gates. OK.")
+        if require:
+            print(
+                f"[ci-evidence] FAIL: {manifest_path} declares NO required gates, but this "
+                "phase is native/AI (--require): an EMPTY manifest cannot close it "
+                "(ADR-011 D3-native / decision 4.4)."
+            )
+            return 1
+        print(f"[ci-evidence] {manifest_path}: no required gates declared. OK.")
         return 0
 
-    expected_sha = args.head_sha or _git_head_sha()
+    expected_sha = head_sha_arg or _git_head_sha()
     if not expected_sha or not _SHA_RE.match(expected_sha):
         print(
             "[ci-evidence] FAIL: could not resolve the commit-under-test sha "
@@ -169,7 +195,9 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 1
 
-    resolved_sha = _last_non_evidence_commit(expected_sha, args.evidence_dir)
+    evidence_dir = Path(evidence_dir_override) if evidence_dir_override else manifest_path.parent
+
+    resolved_sha = _last_non_evidence_commit(expected_sha, str(evidence_dir))
     if resolved_sha != expected_sha:
         print(
             f"[ci-evidence] tip {expected_sha[:12]} is an evidence-only tail; "
@@ -177,9 +205,11 @@ def main(argv: list[str] | None = None) -> int:
         )
         expected_sha = resolved_sha
 
-    evidence_dir = Path(args.evidence_dir)
     failures = 0
-    print(f"[ci-evidence] verifying {len(required)} gate(s) against {expected_sha[:12]}")
+    print(
+        f"[ci-evidence] {manifest_path.parent}: verifying {len(required)} gate(s) "
+        f"against {expected_sha[:12]}"
+    )
     for gate in required:
         ev_path = evidence_dir / f"{gate}.json"
         if not ev_path.exists():
@@ -201,6 +231,68 @@ def main(argv: list[str] | None = None) -> int:
             cost = payload.get("cost_usd")
             cost_str = f" (${cost})" if cost is not None else ""
             print(f"  [OK]   {gate}: PASS{cost_str}")
+    return failures
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--manifest",
+        default=None,
+        help="Explicit manifest path (legacy single-manifest mode). Default: discover "
+        "specs/*/evidence/*/manifest.json.",
+    )
+    parser.add_argument(
+        "--phase",
+        default=None,
+        help="Narrow discovery to specs/*/evidence/<PHASE>/manifest.json.",
+    )
+    parser.add_argument(
+        "--evidence-dir",
+        default=None,
+        help="Override the gate-artifact dir. Default: the manifest's own directory.",
+    )
+    parser.add_argument(
+        "--require",
+        action="store_true",
+        help="Native/AI phase: a missing or EMPTY manifest is a FAIL, not OK "
+        "(ADR-011 D3-native; auto-merge condition 3, grill 2026-07-07).",
+    )
+    parser.add_argument(
+        "--head-sha",
+        default=None,
+        help="Commit the gates must have run against. Defaults to `git rev-parse HEAD`.",
+    )
+    args = parser.parse_args(argv)
+
+    if args.manifest:
+        manifests = [Path(args.manifest)]
+        missing = [p for p in manifests if not p.exists()]
+        if missing:
+            if args.require:
+                print(
+                    f"[ci-evidence] FAIL: no manifest at {missing[0]} but the phase is "
+                    "native/AI (--require): machine manifest is MANDATORY (ADR-011 D3-native)."
+                )
+                return 1
+            print(f"[ci-evidence] no manifest at {missing[0]} -no local-only gates to verify. OK.")
+            return 0
+    else:
+        manifests = _discover_manifests(args.phase)
+        if not manifests:
+            where = f"specs/*/evidence/{args.phase or '*'}/manifest.json"
+            if args.require:
+                print(
+                    f"[ci-evidence] FAIL: no manifest found at {where} but the phase is "
+                    "native/AI (--require): machine manifest is MANDATORY (ADR-011 D3-native)."
+                )
+                return 1
+            print(f"[ci-evidence] no manifest found at {where} -no local-only gates to verify. OK.")
+            return 0
+
+    failures = 0
+    for manifest_path in manifests:
+        failures += _verify_manifest(manifest_path, args.evidence_dir, args.head_sha, args.require)
 
     if failures:
         print(f"[ci-evidence] FAIL: {failures} gate(s) missing/stale/failed -merge blocked.")

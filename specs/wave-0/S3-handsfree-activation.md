@@ -34,6 +34,13 @@ prd_refs: ["§8 Wave 0 S3", "§10.1", "§10.3"]
 - **GO:** AC1 (tile) зелёный на ≥2 OEM — это гарантированный путь. AC2 (media) — bonus, не блокирует.
 - Tile — обязательный нижний уровень; media-hook едет, если стабилен.
 
+## Evidence (ADR-010)
+Спайк по определению — live. Прикладывать в `specs/wave-0/evidence/WAVE0-S3/`:
+- замеры латентности tile-тап → старт захвата (<1 с, AC1) и media-double-press → старт (AC2) — логи/таймстемпы по device-матрице;
+- прогон graceful degradation (AC3) на наушниках без доходящей media-кнопки (AirPods);
+- ссылки на FTL-раны / вывод agent-device.
+Go/No-Go подтверждается **evidence**, не утверждением. Live невозможен → явный `evidence_gap: needs-device|needs-FTL-creds`, не тихий скип.
+
 ## Что решает исход
 Подтверждает hands-free-минимум MVP-0. wake-word (S6) — отдельный, более амбициозный путь.
 

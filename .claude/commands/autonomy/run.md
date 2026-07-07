@@ -6,9 +6,9 @@ allowed-tools: Read, Grep, Glob, Bash, Edit, Write, Agent, Skill, TaskCreate, Ta
 
 # /autonomy:run — автономный многофазный runner (ADR-011 D6/D7/D8)
 
-Ты — runner. Усиленный гейт-стек — merge-authority, НЕ глаза фаундера. Ты сцепляешь фазы в ЭТОЙ сессии (без per-phase ре-bootstrap) до прерывания или пустой очереди. Очередь: **$ARGUMENTS** (default: следующая фаза по `.planning/STATUS.md`).
+Ты — runner. Усиленный гейт-стек — merge-authority, НЕ глаза фаундера. Ты сцепляешь фазы в ЭТОЙ сессии (без per-phase ре-bootstrap) до прерывания или пустой очереди. Очередь: **$ARGUMENTS** (default: следующая фаза из **`.planning/roadmap/phase-queue.yaml`** — машиночитаемый бэклог, A6: бери первую `status: ready` с закрытыми `deps`; НЕ выбирай фазу по прозе STATUS.md).
 
-> ⚠️ **RAILS-FIRST (текущий режим, ADR-011 D1):** auto-merge ВЫКЛЮЧЕН. Ты доводишь фазу до зелёного и **ПАУЗИШЬ на фаундер-ack на КАЖДОМ PR** (не только на трипвайре). Auto-merge включается фаундером после Wave-0-green + CI-secrets (см. `.claude/autonomy/BUILD-PLAN.md` §Активация). Пока — шаг Merge всегда идёт по ack-пути.
+> ⚠️ **RAILS-FIRST (текущий режим, ADR-011 D1):** auto-merge ВЫКЛЮЧЕН. Ты доводишь фазу до зелёного и **ПАУЗИШЬ на фаундер-ack на КАЖДОМ PR** (не только на трипвайре). Auto-merge включается фаундером после **трёх** условий: Wave-0-green + CI-secrets + evidence-контур реально работает (grill 2026-07-07, решение 4.4; см. `.claude/autonomy/BUILD-PLAN.md` §Активация). Пока — шаг Merge всегда идёт по ack-пути.
 
 ## Контракты (грузи JIT, в этом порядке)
 1. `.planning/agent-handbook/00-START-HERE.md` — bootstrap-маршрут + правила.
@@ -18,13 +18,14 @@ allowed-tools: Read, Grep, Glob, Bash, Edit, Write, Agent, Skill, TaskCreate, Ta
 
 ## Preflight (раз за прогон)
 - `git rev-parse --show-toplevel` — якорь; синхронизируй `origin/main`; работай от свежего `main`.
-- **Device-гейты:** on-device OEM survival НЕ гоняется в облаке — это founder/FTL. Фаза, чей diff трогает нативный фон (`native_background_permissions`), обязана дать `device_survival`-evidence; если устройства/FTL нет → `evidence_gap` → RUN-QUEUE `stuck`, бери следующую фазу без нативного фона.
+- **Device-гейты (гибрид, grill 2026-07-07 / 4.1):** on-device OEM survival НЕ гоняется в облаке — это founder/FTL (промежуточный smoke-ярус — Docker-эмулятор фаундера, см. handbook 07 §6b). Фаза, чей diff трогает нативный фон (`native_background_permissions`), обязана дать `device_survival`-evidence; если устройства/FTL нет → явный `evidence_gap`, фаза МОЖЕТ закрыться `pass-with-followups`, ты продолжаешь следующую фазу, но **merge PR в main блокирован** до device-evidence ИЛИ явного founder-ack на gap (RUN-QUEUE `ack-needed` с пометкой native-gap).
 - **Funded `.env`:** `python scripts/autonomy/provision_env.py` (idempotent, secret-safe; exit 2 = нет canonical env → live-gold недоступен → stuck-путь для AI-фаз). НИКОГДА не коммить `.env` (трипвайр `secrets_keys_crypto` + gitleaks).
 - Бюджет: dev_team per_day soft $30 / hard $75. Трекай приблизительный спенд; СТОП на hard cap (RUN-QUEUE `stuck`: budget).
 
 ## Per-phase цикл
 Для каждой фазы P в очереди:
 
+0. **Spec-гейт (A7):** прочитай фронтматтер спеки P (путь — из `phase-queue.yaml`). `status: approved` — машинный гейт одобрения фаундером. Поле отсутствует или ≠ `approved` (draft) → **НЕ стартуй фазу**: RUN-QUEUE `escalation` («спека не одобрена») + notify, бери следующую фазу.
 1. **Ветка** `claude/auto-<P>-<slug>` от свежего `origin/main`.
 2. **Discuss** — гоняй `/autonomy:discuss` для P (own+log через `log_decision.py`; широкие форки → judge-панель; продукт/трипвайр → эскалация). Эскалация: RUN-QUEUE `escalation` + notify; блокирует всю фазу → скипай P (оставь ветку), бери следующую НЕЗАВИСИМУЮ; иначе продолжай незаблокированную часть.
 3. **Plan** — `PLAN-<P>.md` ролью planner; пинь таски через TaskCreate.
@@ -32,8 +33,8 @@ allowed-tools: Read, Grep, Glob, Bash, Edit, Write, Agent, Skill, TaskCreate, Ta
 5. **Gates** — локальный CI-эквивалент:
    - Android: `./gradlew :app:assembleDebug :app:testDebugUnitTest ktlintCheck detekt` (+ `assembleDebugAndroidTest` если менялись instrumented).
    - Backend (когда есть): `ruff check . && mypy --strict . && pytest`.
-   - Local-only гейты (live-gold STT/LLM / RuStore sandbox / **device_survival** / adversarial audit / judge-панель) ОБЯЗАНЫ писать `evidence/<gate>.json` (schema `.claude/autonomy/evidence-schema.json`, `head_sha` = финальный коммит) + объявить в `evidence/manifest.json`. **Перегенерь evidence-гейты, если коммитил после генерации** (freshness enforced by ci-evidence).
-6. **Exit ritual** — JOURNAL append + хендоф (house-rule; review-гейт блокирует мёрж без него). STATUS/JOURNAL/memory пишет ТОЛЬКО через `memory-curator` (handbook правило) — спавни его на exit ritual.
+   - Local-only гейты (live-gold STT/LLM / RuStore sandbox / **device_survival** / adversarial audit / judge-панель) ОБЯЗАНЫ писать `specs/<wave>/evidence/<P>/<gate>.json` (schema `.claude/autonomy/evidence-schema.json`, `head_sha` = финальный коммит) + объявить ВСЕ гейты DoD в `specs/<wave>/evidence/<P>/manifest.json` — единый путь evidence (grill 2026-07-07 / A5), внутри человеческого бандла ADR-010. Самопроверка: `python scripts/autonomy/verify_evidence.py --phase <P>`; для native/AI-фаз — с `--require` (нет/пустой манифест = fail). **Перегенерь evidence-гейты, если коммитил после генерации** (freshness enforced by ci-evidence).
+6. **Exit ritual** — JOURNAL append + хендоф (house-rule; review-гейт блокирует мёрж без него). STATUS/JOURNAL/memory + **`status` фазы в `.planning/roadmap/phase-queue.yaml`** пишет ТОЛЬКО через `memory-curator` (handbook правило) — спавни его на exit ritual.
 7. **PR** — `gh pr create` (тело по шаблону handbook 06: что/EARS-AC/аудит/девайс/evidence/cost/чек фаундера). Смотри `gh pr checks <N> --watch`; ВСЕ чеки зелёные — включая path-фильтрованные `ci-android`/`ci-backend`, когда сработали. Красный гейт → фикси и re-push, max 3 цикла → RUN-QUEUE `stuck` + notify, дальше.
    > В окружении без `gh` CLI — используй GitHub MCP-тулы (`create_pull_request`, `pull_request_read`, `get_check_run`, `merge_pull_request`) как эквивалент.
 8. **Tripwire classify (явный шаг)** — `python scripts/autonomy/classify_tripwire.py --diff-base origin/main` (exit 0 = clean; 10 = matched). Pre-merge хук перепроверяет это на merge-команде — defense-in-depth.

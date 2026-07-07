@@ -16,8 +16,11 @@
 # накопленного доверия и с правкой ADR-011.
 #
 # requires_device_evidence: true у категории → фаза с таким изменением ОБЯЗАНА приложить
-# device-evidence (реальный OEM-прогон ≥2 устройства) в evidence/, иначе evidence_gap →
-# RUN-QUEUE stuck. Это решение фаундера по нативному фону (главный риск EARAI): растяжка И
+# device-evidence (реальный OEM-прогон ≥2 устройства) в specs/<wave>/evidence/<PHASE>/
+# (единый путь, grill 2026-07-07 / A5). Гибрид (решение 4.1): нет device-evidence →
+# фаза может закрыться pass-with-followups и runner продолжает, но MERGE PR в main
+# блокирован до device-evidence ИЛИ явного founder-ack на gap (RUN-QUEUE-запись).
+# Это решение фаундера по нативному фону (главный риск EARAI): растяжка И
 # device-gate одновременно.
 
 version: 1

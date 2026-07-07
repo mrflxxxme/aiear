@@ -36,6 +36,8 @@
 2. Указать **причину** и **что нужно** (какие creds / какое устройство / какой sandbox).
 3. Поднять фаундеру. Фаза идёт на гейт только если фаундер **явно принял** gap (тогда вердикт `pass-with-followups` с followup-таском на добор evidence).
 
+Для **нативных** фаз действует гибрид (grill 2026-07-07, решение 4.1): фаза без device-evidence МОЖЕТ закрыться `pass-with-followups`, runner продолжает следующую фазу, но **merge PR в `main` блокирован** до device-evidence ИЛИ явного founder-ack на gap (RUN-QUEUE-запись). См. ADR-010 §Решение п.5 / ADR-011 D3-native.
+
 ## 6. Evidence-бандл
 
 Куда: `specs/<wave>/evidence/<PHASE>/`. Что внутри (по применимости):
@@ -50,6 +52,24 @@
 | `coverage.xml` / summary | покрытие (≥70% новый / ≥85% security-critical) |
 
 Ссылается из хендоф-поля `evidence`, из `AUDIT-<PHASE>.md` (линза live-gold/evidence) и из тела PR (секция Evidence).
+
+## 6a. Машинный манифест (ADR-011 D3 · единый путь evidence, grill 2026-07-07 / A5)
+
+Машинная часть evidence живёт **внутри того же бандла**, а не в отдельном корневом `evidence/`:
+
+- Каждая фаза с local-only гейтами из ADR-011 D3 (live-gold STT/LLM · RuStore sandbox · `device_survival` · adversarial audit · judge-панель) обязана иметь **`specs/<wave>/evidence/<PHASE>/manifest.json`**, перечисляющий **ВСЕ** гейты DoD фазы в `required_gates`, + по файлу `specs/<wave>/evidence/<PHASE>/<gate>.json` на гейт (схема — [`.claude/autonomy/evidence-schema.json`](../../.claude/autonomy/evidence-schema.json), `head_sha` = финальный коммит, `verdict: PASS`).
+- Проверяет `scripts/autonomy/verify_evidence.py` (workflow `ci-evidence`): discovery по `specs/*/evidence/*/manifest.json`, свежесть + PASS каждого гейта.
+- **Отсутствие/пустота манифеста = fail для нативных/AI-фаз** (runner гоняет верификатор с `--require`), а не «OK». «Нет манифеста → OK» допустим только для фаз, у которых local-only гейтов нет.
+
+## 6b. Ярусы device-петли
+
+```
+CI-раннер (lint/unit/assemble, есть Google-egress)
+   → Docker-эмулятор фаундера (установлен, работает) — smoke-ярус: быстрый прогон
+     instrumented/выживаемости до трат FTL-минут; НЕ заменяет OEM-прогон
+   → GMD/FTL (облачная OEM-матрица: Pixel, Samsung)
+   → физ-OEM фаундера (Xiaomi обязателен — OEM-киллеры)
+```
 
 ## 7. Гейты, на которых это проверяется
 

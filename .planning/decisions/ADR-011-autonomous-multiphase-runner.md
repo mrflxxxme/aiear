@@ -62,6 +62,8 @@ Guiding principle: **автоматизировать полностью, но �
 
 Нативный фон — И tripwire-категория (D2), И **обязательный device-gate**: фаза, чей diff совпал с `native_background_permissions`, ОБЯЗАНА объявить гейт `device_survival` в `evidence/manifest.json` и приложить device-evidence (реальный OEM-прогон, ≥2 устройства, Xiaomi обязателен — memory/android-oem). Нет device-evidence → `evidence_gap` → RUN-QUEUE `stuck`, не тихий mock-зелёный скип. `requires_device_evidence: true` у категории в `tripwire.yaml` — источник истины этого требования.
 
+> Семантика «нет device-evidence → stuck» и путь `evidence/` ревизованы Поправкой 2026-07-07 (см. §Поправка ниже): гибрид pass-with-followups + merge-блок; манифест — внутри `specs/<wave>/evidence/<PHASE>/`.
+
 ### D4 — Передняя растяжка: эскалация только на product/market + необратимом
 
 Агент **владеет всеми implementation + архитектурными форками** (пишет ADR через template + логирует в `DECISIONS-LOG.md` через `log_decision.py`). Эскалирует к фаундеру **только**: (1) продуктово-рыночное поведение, требующее знания ЦА/рынка (что видит юзер, цена/тариф, scope-cut, позиционирование), (2) трипвайр-категории D2. Передняя растяжка — зеркало задней. Контракт — `.claude/autonomy/escalation-policy.md`.
@@ -91,7 +93,16 @@ Runner обязан достучаться до фаундера на **5 interr
 - **Блок C — Runner:** `/autonomy:run|ack|discuss` + RUN-QUEUE + notify + role-loader. ✅
 - **Блок D — Self-healing:** `/autonomy:heal` + check_main_health. ✅
 - **Блок E — Параллелизм:** opt-in worktree. ✅ (документирован в run.md)
-- **Активация auto-merge (D1):** ⏸ **отложена до Wave-0-green + CI-secrets** (фаундер флипает). Branch protection + hook-arming — founder one-time actions (см. `.claude/autonomy/README.md`).
+- **Активация auto-merge (D1):** ⏸ **отложена до Wave-0-green + CI-secrets** (фаундер флипает). Branch protection + hook-arming — founder one-time actions (см. `.claude/autonomy/README.md`). *(+3-е условие — evidence-контур, см. §Поправка 2026-07-07.)*
+
+## Поправка 2026-07-07 (grill по проектной документации)
+
+Ратифицировано фаундером в интервью — протокол [`GRILL-2026-07-07-project-docs.md`](../_session-context/GRILL-2026-07-07-project-docs.md) (раунд 4 + производные решения A5–A8). Историю решения выше не переписываем; действующая семантика — эта:
+
+1. **Единый путь evidence (A5).** Машинные `manifest.json` + `<gate>.json` живут **внутри** человеческого бандла ADR-010: `specs/<wave>/evidence/<PHASE>/manifest.json` + `specs/<wave>/evidence/<PHASE>/<gate>.json`. Корневой `evidence/` упразднён (две системы evidence сведены в одну). `verify_evidence.py` в discovery-режиме обходит `specs/*/evidence/*/manifest.json`; манифест обязан перечислять **все** гейты DoD фазы.
+2. **D3-native — гибрид вместо `stuck` (решение 4.1).** Нативная фаза без device-evidence МОЖЕТ закрыться `pass-with-followups`; runner продолжает следующую фазу; **merge PR в `main` блокирован** до device-evidence ИЛИ явного founder-ack на gap (RUN-QUEUE-запись). Согласовано с ADR-010 §Решение п.5 (та же поправка там). Двойной гейт (растяжка + device-evidence) сохраняется — гибрид меняет точку блокировки: не конвейер, а мёрж.
+3. **3-е условие активации auto-merge (решение 4.4).** К «Wave-0-green» и «CI-secrets» добавлено: **«evidence-контур реально работает»** — единый путь evidence, машиночитаемый DoD, непустой `manifest.json` обязателен для нативных/AI-фаз, `verify_evidence.py --require` фейлит при отсутствии/пустоте манифеста.
+4. **Смежные производные (для навигации):** очередь фаз — `.planning/roadmap/phase-queue.yaml` (A6); машинный гейт одобрения спеки — `status: approved` во фронтматтере (A7, handbook 02); каноническая конвенция веток — `claude/*` (A8, conventions §7).
 
 ## Consequences
 

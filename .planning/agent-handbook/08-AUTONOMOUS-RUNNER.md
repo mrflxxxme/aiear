@@ -8,7 +8,7 @@
 
 ## ⚠️ Режим сейчас: RAILS-FIRST — auto-merge ВЫКЛЮЧЕН
 
-Стек построен, но merge-authority ещё НЕ передан машине. Runner доводит фазу до зелёного и **ПАУЗИТ на фаундер-ack на КАЖДОМ PR** (= сегодняшние автономные сессии, handbook 06). Включение auto-merge (фаундер) — после: Wave-0 S1–S5 зелёные на ≥2 OEM **и** CI на secrets. См. [`.claude/autonomy/BUILD-PLAN.md`](../../.claude/autonomy/BUILD-PLAN.md) §Активация.
+Стек построен, но merge-authority ещё НЕ передан машине. Runner доводит фазу до зелёного и **ПАУЗИТ на фаундер-ack на КАЖДОМ PR** (= сегодняшние автономные сессии, handbook 06). Включение auto-merge (фаундер) — после **трёх** условий (grill 2026-07-07, решение 4.4): Wave-0 S1–S5 зелёные на ≥2 OEM **и** CI на secrets **и** evidence-контур реально работает (единый путь, машинный DoD, непустой manifest для native/AI-фаз, `verify_evidence.py --require` фейлит при отсутствии). См. [`.claude/autonomy/BUILD-PLAN.md`](../../.claude/autonomy/BUILD-PLAN.md) §Активация.
 
 ## Две растяжки
 
@@ -23,11 +23,11 @@
 
 ## Нативный фон — двойной гейт (D3-native)
 
-mic-FGS / CDM / MediaSession / manifest / tile: И трипвайр (ack), И **обязательный `device_survival`-evidence** (реальный OEM-прогон ≥2 устройства, Xiaomi обяз.). Нет device-evidence → `evidence_gap` → RUN-QUEUE `stuck`. Mock-зелёное не закрывает главный риск EARAI (ADR-010).
+mic-FGS / CDM / MediaSession / manifest / tile: И трипвайр (ack), И **обязательный `device_survival`-evidence** (реальный OEM-прогон ≥2 устройства, Xiaomi обяз.). **Гибрид (grill 2026-07-07, решение 4.1):** нативная фаза без device-evidence МОЖЕТ закрыться `pass-with-followups`; runner продолжает следующую фазу; **merge PR в `main` блокирован** до device-evidence ИЛИ явного founder-ack на gap (RUN-QUEUE-запись). Mock-зелёное не закрывает главный риск EARAI (ADR-010).
 
-## Evidence-протокол (D3)
+## Evidence-протокол (D3, единый путь — grill 2026-07-07 / A5)
 
-Local-only гейты (live-gold STT/LLM, RuStore sandbox, device_survival, adversarial) пишут `evidence/<gate>.json` (`head_sha` = финальный коммит, `verdict: PASS`) + объявляют в `evidence/manifest.json`. `ci-evidence` ассертит существование + свежесть + PASS. **Коммитил после генерации → перегенерь** (freshness enforced).
+Local-only гейты (live-gold STT/LLM, RuStore sandbox, device_survival, adversarial) пишут `specs/<wave>/evidence/<PHASE>/<gate>.json` (`head_sha` = финальный коммит, `verdict: PASS`) + объявляют **все** гейты DoD в `specs/<wave>/evidence/<PHASE>/manifest.json` — внутри человеческого бандла ADR-010, не в корневом `evidence/`. `ci-evidence` ассертит существование + свежесть + PASS (discovery по `specs/*/evidence/*/manifest.json`); для native/AI-фаз верификатор гоняется с `--require` (нет/пустой манифест = fail). **Коммитил после генерации → перегенерь** (freshness enforced).
 
 ## Judge-панель (D5) — только широкие форки
 

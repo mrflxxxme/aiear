@@ -1,0 +1,448 @@
+# Канонический API-контракт AIEAR v1 (ADR-013 §3, tripwire «публичные контракты» ADR-011 D2).
+# Спеки фаз ссылаются сюда и не дублируют схемы. Ломающее изменение = /v2, не правка v1.
+openapi: 3.1.0
+info:
+  title: AIEAR Backend API
+  version: 1.0.0
+  description: |
+    Backend-контракт AIEAR (FastAPI-монолит, Yandex Cloud ru-central1 — ADR-013).
+    Все ключи STT/LLM живут только на сервере (ADR-004); клиент ходит через эти эндпоинты.
+
+    **Auth (ADR-012):** все эндпоинты, кроме `/v1/auth/device`, требуют
+    `Authorization: Bearer <device-token|account-token>`. В MVP-0 токен — анонимный
+    device-token (непрозрачный, без ПД); в MVP-1 добавляется привязка VK ID / Яндекс ID
+    (`/v1/auth/link`), сливающая device-scope в account-scope.
+
+    **ПД:** аудио и транскрипты россиян обрабатываются и хранятся только в RF-облаке
+    (ФЗ-242, ADR-003/ADR-004).
+servers:
+  - url: https://api.aiear.example/  # placeholder: прод-домен фиксируется при деплое (Yandex Cloud, ADR-013)
+    description: production (Yandex Cloud ru-central1)
+
+security:
+  - bearerAuth: []
+
+paths:
+  /v1/auth/device:
+    post:
+      operationId: authDevice
+      summary: Выдача анонимного device-token (ADR-012, MVP-0)
+      description: |
+        Первый запуск приложения: клиент генерирует `install_id` (UUID, персистится локально)
+        и обменивает его на непрозрачный подписанный device-token. Повторный вызов с тем же
+        `install_id` идемпотентен (возвращает валидный токен того же device-scope).
+        Токен не содержит ПД; все данные пользователя привязаны к device-scope до привязки
+        аккаунта в MVP-1.
+      security: []  # единственный неавторизованный эндпоинт
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceAuthRequest'
+      responses:
+        '200':
+          description: Токен выдан (или переиздан для известного install_id).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokenResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /v1/auth/link:
+    post:
+      operationId: authLink
+      summary: "[Заготовка MVP-1] Привязка VK ID / Яндекс ID к device-scope"
+      description: |
+        **MVP-1 (ADR-012 §2), в MVP-0 не реализуется** — контракт зарезервирован, чтобы
+        клиент и БД (owner_id: device|account) проектировались под него сразу.
+        Привязка сливает device-scope в account-scope (односторонняя миграция, конфликты — LWW
+        как в `/v1/sync`); entitlement и sync становятся мультидевайсными.
+        В MVP-0 backend отвечает `501`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountLinkRequest'
+      responses:
+        '200':
+          description: Аккаунт привязан; выдан account-token, заменяющий device-token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokenResponse'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: Провайдер-аккаунт уже привязан к другому scope.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '501':
+          description: Не реализовано в MVP-0.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /v1/stt/stream:
+    get:
+      operationId: sttStream
+      summary: Стриминговый STT (WebSocket) — прокси к Yandex SpeechKit
+      description: |
+        **WebSocket-эндпоинт** (протокол выбран решением A1 grill 2026-07-07: WS default;
+        gRPC — только если спайк S5 покажет, что WS не держит p95 partial < 2 c).
+        OpenAPI не описывает WS нативно, поэтому протокол зафиксирован здесь текстом,
+        а схемы сообщений — в `components.schemas.Stt*`.
+
+        **Handshake:** `GET /v1/stt/stream` с заголовками `Upgrade: websocket` и
+        `Authorization: Bearer <token>` (либо `?token=` как fallback для клиентов,
+        не умеющих WS-заголовки) → `101 Switching Protocols`.
+
+        **Протокол сообщений:**
+        1. Клиент → сервер, первым кадром (text/JSON): `SttInit`
+           (параметры аудио: формат, sample rate, session_id).
+        2. Клиент → сервер (binary): аудио-чанки PCM 16-bit LE mono, sample rate из `SttInit`;
+           рекомендуемый размер чанка 100–200 мс.
+        3. Сервер → клиент (text/JSON): поток `SttPartial` (промежуточные гипотезы,
+           latency-гейт S5: p95 < 2 c на 4G) и `SttFinal` по завершении реплики
+           (final ≤ 3 c, F1-AC1).
+        4. Клиент завершает реплику text/JSON-кадром `SttEnd` (или закрытием сокета).
+        5. Ошибки: сервер шлёт `SttError` и закрывает сокет кодом 1011
+           (или 4401 при невалидном токене).
+      responses:
+        '101':
+          description: WebSocket handshake успешен; далее — протокол из description.
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: Квота облачного STT free-тира исчерпана (ADR-005); клиент переключается на on-device STT (F6).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /v1/structure:
+    post:
+      operationId: structureThought
+      summary: LLM-структурирование транскрипта → Thought (F2)
+      description: |
+        Превращает сырой транскрипт в структурированную `Thought` по каноническому промпту
+        `specs/_contracts/prompts/structure_v1.md`. LLM-провайдер — сменный адаптер за
+        прокси (дефолт GigaChat-2 Lite, grill §3.2); клиент провайдера не знает.
+        Время CTA парсит LLM (RFC3339 в `suggested_cta.when`) — отдельного клиентского
+        парсера времени нет. `context.client_time` нужен LLM для разрешения относительных
+        дат («завтра», «в пятницу»).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StructureRequest'
+      responses:
+        '200':
+          description: |
+            Структурированная мысль. Сервер возвращает полный объект `Thought`
+            (status=structured, заполнены type/refined_text/tags/suggested_*/confidence);
+            идентичность (id/created_at) — эхо клиентских значений из запроса.
+          content:
+            application/json:
+              schema:
+                $ref: './thought.schema.json'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503':
+          description: LLM недоступен/таймаут — клиент сохраняет Thought со status=transcribed и ретраит (F2-AC3).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /v1/sync:
+    post:
+      operationId: syncThoughts
+      summary: Delta-sync мыслей (F5) — курсор + LWW
+      description: |
+        Двусторонний дельта-протокол: клиент шлёт локальные изменения с момента
+        `since_cursor` и получает серверные изменения + новый курсор.
+
+        **Правила:**
+        - `since_cursor` — непрозрачный серверный курсор (первый sync: `null`).
+        - `upserts[]` — полные объекты `Thought` (создание и изменение неразличимы — upsert).
+        - `deletions[]` — tombstone'ы (id + deleted_at); сервер пропагирует их другим
+          устройствам scope (актуально после привязки аккаунта, ADR-012).
+        - **Конфликт = LWW по `updated_at`** (RFC3339, сравнение по UTC); проигравшая
+          версия отбрасывается без ошибки. Удаление против правки — тоже LWW по времени.
+        - Ответ может быть страничным: `has_more=true` → клиент повторяет запрос с новым курсором.
+        - Идемпотентность: повторная отправка того же upsert'а безвредна (id + updated_at).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncRequest'
+      responses:
+        '200':
+          description: Дельта применена; встречная дельта сервера.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: Курсор устарел/невалиден (напр. после server-side compaction) — клиент делает полный ресинк с since_cursor=null.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        Device-token (MVP-0) или account-token (MVP-1) — непрозрачная подписанная строка,
+        без ПД внутри (ADR-012). TLS-only.
+
+  responses:
+    BadRequest:
+      description: Невалидный запрос (схема/поля).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Unauthorized:
+      description: Токен отсутствует/невалиден/отозван — клиент переполучает токен через /v1/auth/device.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    RateLimited:
+      description: Превышен rate-limit; Retry-After в заголовке.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ServerError:
+      description: Внутренняя ошибка.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
+  schemas:
+    Error:
+      type: object
+      required: [code, message]
+      additionalProperties: false
+      properties:
+        code:
+          type: string
+          description: Машиночитаемый код (snake_case).
+          enum:
+            - invalid_request
+            - unauthorized
+            - token_revoked
+            - quota_exceeded
+            - rate_limited
+            - llm_unavailable
+            - stt_unavailable
+            - cursor_invalid
+            - conflict
+            - not_implemented
+            - internal
+        message:
+          type: string
+          description: Человекочитаемое описание (ru), безопасно показывать в UI-логе.
+        details:
+          type: object
+          additionalProperties: true
+          description: Опциональный контекст (напр. retry_after_s, поле валидации).
+
+    DeviceAuthRequest:
+      type: object
+      required: [install_id, platform, app_version]
+      additionalProperties: false
+      properties:
+        install_id:
+          type: string
+          format: uuid
+          description: UUID установки, генерируется клиентом один раз и персистится.
+        platform:
+          type: string
+          enum: [android]
+        app_version:
+          type: string
+          description: Версия приложения (semver), для миграций контракта.
+
+    AuthTokenResponse:
+      type: object
+      required: [token, token_type, scope]
+      additionalProperties: false
+      properties:
+        token:
+          type: string
+          description: Непрозрачный подписанный токен (без ПД).
+        token_type:
+          type: string
+          const: Bearer
+        scope:
+          type: string
+          enum: [device, account]
+        expires_at:
+          type: [string, 'null']
+          format: date-time
+          description: null = бессрочный до отзыва (MVP-0 device-token).
+
+    AccountLinkRequest:
+      type: object
+      required: [provider, authorization_code]
+      additionalProperties: false
+      properties:
+        provider:
+          type: string
+          enum: [vk_id, yandex_id]
+        authorization_code:
+          type: string
+          description: OAuth authorization code провайдера; обмен на стороне backend.
+
+    StructureRequest:
+      type: object
+      required: [thought_id, transcript, context]
+      additionalProperties: false
+      properties:
+        thought_id:
+          type: string
+          format: uuid
+          description: id клиентской Thought (эхо в ответе; идемпотентность повтора).
+        transcript:
+          type: string
+          minLength: 1
+          description: Сырой транскрипт (raw_transcript).
+        context:
+          type: object
+          required: [client_time, source]
+          additionalProperties: false
+          properties:
+            client_time:
+              type: string
+              format: date-time
+              description: Локальное время клиента с оффсетом (RFC3339) — база разрешения «завтра/в 10».
+            source:
+              type: string
+              enum: [cloud_stt, ondevice_stt, manual]
+            created_at:
+              type: string
+              format: date-time
+              description: Момент захвата мысли (если отличается от client_time).
+
+    # --- Сообщения WebSocket /v1/stt/stream (text/JSON, кроме бинарных аудио-чанков) ---
+    SttInit:
+      type: object
+      required: [type, session_id, format, sample_rate_hz]
+      additionalProperties: false
+      properties:
+        type: { const: init }
+        session_id:
+          type: string
+          format: uuid
+          description: id сессии захвата (CaptureSession, F1).
+        format:
+          type: string
+          enum: [pcm_s16le]
+        sample_rate_hz:
+          type: integer
+          enum: [8000, 16000, 48000]
+        lang: { const: ru }
+
+    SttPartial:
+      type: object
+      required: [type, text]
+      additionalProperties: false
+      properties:
+        type: { const: partial }
+        text: { type: string }
+        ts:
+          type: string
+          format: date-time
+
+    SttFinal:
+      type: object
+      required: [type, text]
+      additionalProperties: false
+      properties:
+        type: { const: final }
+        text: { type: string }
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+
+    SttEnd:
+      type: object
+      required: [type]
+      additionalProperties: false
+      properties:
+        type: { const: end }
+
+    SttError:
+      type: object
+      required: [type, code, message]
+      additionalProperties: false
+      properties:
+        type: { const: error }
+        code:
+          type: string
+          enum: [unauthorized, quota_exceeded, stt_unavailable, bad_audio, internal]
+        message: { type: string }
+
+    # --- Sync (F5) ---
+    Deletion:
+      type: object
+      required: [id, deleted_at]
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        deleted_at:
+          type: string
+          format: date-time
+          description: Момент удаления (участвует в LWW против конкурирующей правки).
+
+    SyncRequest:
+      type: object
+      required: [since_cursor, upserts, deletions]
+      additionalProperties: false
+      properties:
+        since_cursor:
+          type: [string, 'null']
+          description: Курсор из прошлого ответа; null = первый/полный sync.
+        upserts:
+          type: array
+          items:
+            $ref: './thought.schema.json'
+        deletions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Deletion'
+
+    SyncResponse:
+      type: object
+      required: [cursor, upserts, deletions, has_more]
+      additionalProperties: false
+      properties:
+        cursor:
+          type: string
+          description: Новый курсор — клиент персистит и передаёт в следующий sync.
+        upserts:
+          type: array
+          items:
+            $ref: './thought.schema.json'
+          description: Серверные изменения, победившие по LWW.
+        deletions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Deletion'
+        has_more:
+          type: boolean
+          description: true → повторить запрос с новым cursor (пагинация дельты).

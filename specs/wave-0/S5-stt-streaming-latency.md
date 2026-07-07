@@ -4,7 +4,7 @@ title: STT-стриминг латентность <2 сек на 4G
 status: approved
 blocking: true
 owner_role: backend-engineer
-adr_refs: [ADR-003, ADR-004]
+adr_refs: [ADR-003, ADR-004, ADR-013]
 prd_refs: ["§8 Wave 0 S5", "§10.2"]
 ---
 
@@ -19,17 +19,18 @@ prd_refs: ["§8 Wave 0 S5", "§10.2"]
 - **S5-AC3** — IF соединение нестабильно/обрывается, THEN THE SYSTEM SHALL переключиться на on-device черновой STT (Vosk/whisper.cpp) и пометить для ре-транскрипции (связь с F6).
 
 ## Метод
-1. Backend-прокси к SpeechKit стримингу (gRPC/WebSocket), ключи на сервере.
-2. Клиент шлёт аудио-чанки → получает partial-транскрипт.
-3. Замер end-to-end латентности (микрофон→partial) на 4G (реальная сеть, не Wi-Fi); throttle для эмуляции слабого 4G.
+1. Backend-прокси к SpeechKit стримингу — **клиент↔backend по WebSocket `/v1/stt/stream`** (default-протокол, решение A1 grill 2026-07-07; контракт — [`specs/_contracts/openapi.yaml`](../_contracts/openapi.yaml)); ключи на сервере. **gRPC — только если спайк покажет, что WS не держит p95 <2 с** — тогда смена протокола = результат спайка (фиксируется в evidence + правкой контракта, tripwire «публичные контракты»).
+2. Backend — в **Yandex Cloud ru-central1** (ADR-013: ко-локация со SpeechKit — минимальная сетевая латентность до STT).
+3. Клиент шлёт аудио-чанки → получает partial-транскрипт.
+4. Замер end-to-end латентности (микрофон→partial) на 4G (реальная сеть, не Wi-Fi); throttle для эмуляции слабого 4G.
 
 ## Метрики
 - p50/p95 латентности partial-транскрипта на 4G.
 - Поведение при packet loss / переключении сети.
 
 ## Go / No-Go
-- **GO:** p95 partial-латентности <2 сек на 4G.
-- Если стабильно >2 сек — рычаги: чанк-сайз, частота дискретизации, регион Yandex Cloud; задокументировать в `memory/stt-llm.md`.
+- **GO:** p95 partial-латентности <2 сек на 4G (по WebSocket).
+- Если стабильно >2 сек — рычаги по порядку: чанк-сайз, частота дискретизации, затем **переход на gRPC** (эскалация A1); регион уже оптимален (ru-central1, ADR-013). Задокументировать в `memory/stt-llm.md`.
 
 ## Что решает исход
 Подтверждает «живость» захвата F1 и закладывает офлайн-fallback F6.

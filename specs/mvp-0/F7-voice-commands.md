@@ -25,22 +25,23 @@ prd_refs: ["§8 MVP-0 F7", "§10.1"]
 - Anytime-hotword / старт при убитом приложении (V1). Диалоговый ассистент с TTS (V1.2).
 
 ## Контракт / интерфейсы
-- Команды распознаются на потоке STT (F1) → интент-классификатор (LLM/правила, backend).
+- Команды распознаются на потоке STT (F1) → **интент-классификатор — LLM через тот же сменный адаптер backend-прокси, что F2** (дефолт GigaChat-2 Lite, ADR-013 §4); правила — только как быстрый пре-фильтр очевидных команд.
 - **Модель:** `VoiceCommand {intent: enum(mark_important|set_destination|set_cta|new_thought|confirm|cancel), confidence, slots}`.
+- **Golden-набор команд — [`specs/_contracts/golden/f7-commands.jsonl`](../_contracts/golden/README.md)** (структура и процесс — в README golden).
 
 ## Acceptance criteria (EARS)
 - **MVP0-F7-AC1** — WHILE сессия захвата активна, THE SYSTEM SHALL распознавать голосовые команды управления (разметка, выбор destination, подтверждение/отмена) и выполнять их без касания экрана.
-- **MVP0-F7-AC2** — IF голосовая команда распознана с низкой уверенностью, THEN THE SYSTEM SHALL переспросить голосом перед выполнением необратимого действия.
+- **MVP0-F7-AC2** — IF голосовая команда распознана с **confidence < 0.7** И действие необратимо (отправка/удаление), THEN THE SYSTEM SHALL переспросить голосом перед выполнением (порог ратифицирован фаундером, grill 2026-07-07 §3.3).
 - **MVP0-F7-AC3** — WHEN распознан интент `set_cta` со временем, THE SYSTEM SHALL заполнить CTA (связь с F2/F3) корректным временем.
 - **MVP0-F7-AC4** — THE SYSTEM SHALL отличать команды управления от содержимого мысли (не записывать «отправь в Obsidian» в текст заметки).
 
 ## Edge-cases / unhappy-path
 - Команда внутри диктовки мысли → дизамбигуация (явный префикс/пауза); при неоднозначности — переспрос (AC2).
 - Шум/смешанный язык → низкая уверенность → переспрос.
-- Необратимое (отправка/удаление) при low-confidence → всегда подтверждение.
+- Необратимое (отправка/удаление) при confidence < 0.7 → всегда подтверждение (AC2).
 
 ## Test plan
-- **Evaluator:** golden + adversarial набор команд (шум, акцент, команда-внутри-текста); метрика intent accuracy + false-trigger rate.
+- **Evaluator:** golden + adversarial набор команд (`specs/_contracts/golden/f7-commands.jsonl`: шум, акцент, команда-внутри-текста, негативные кейсы); метрика intent accuracy + false-trigger rate + соблюдение порога переспроса 0.7.
 - Contract: интент-классификатор API.
 - Instrumented: end-to-end голос→действие без касания на ≥2 OEM.
 

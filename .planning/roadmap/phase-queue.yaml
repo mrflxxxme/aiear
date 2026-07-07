@@ -1,0 +1,132 @@
+# Машиночитаемая очередь фаз AIEAR (A6, grill 2026-07-07).
+#
+# Единственный источник «что дальше» для автономного runner'а (/autonomy:run):
+# бери первую фазу со status: ready, у которой все deps закрыты (status: done).
+# НЕ выбирать фазу по прозе STATUS.md — она человекочитаемая витрина, не очередь.
+#
+# status: done      — фаза закрыта (пайплайн пройден; для tier 3+ PR может ждать founder-гейт — см. notes)
+#         ready     — можно стартовать (spec status: approved + deps done)
+#         blocked   — deps не закрыты
+#         stub      — спека не раскрыта (planner раскрывает JIT)
+# blocking: true    — фаза держит гейт своей волны
+#
+# Пишет status ТОЛЬКО memory-curator на phase-close (single-writer, handbook 05).
+# Порядок/deps — из .planning/roadmap/{wave-0-spikes,mvp-0}.md + фронтматтеров спек.
+
+version: 1
+
+phases:
+  # ── Wave 0 — спайки риска (гейт: S1–S5 зелёные на ≥2 OEM → MVP-0) ──
+  - id: WAVE0-S1
+    title: "mic-FGS переживает screen-off ≥60 мин"
+    spec: specs/wave-0/S1-mic-fgs-screenoff.md
+    deps: []
+    status: done
+    blocking: true
+    notes: "Пайплайн пройден, аудит pass-with-followups; PR на founder-гейте (tier 4): device-прогон Xiaomi pending (evidence_gap needs-device). Merge — за фаундером."
+
+  - id: WAVE0-S2
+    title: "CDM-автозапуск по BT из фона"
+    spec: specs/wave-0/S2-cdm-bt-autostart.md
+    deps: []
+    status: ready
+    blocking: true
+    notes: "Нативный фон → tripwire + device_survival (гибрид ADR-011 D3-native)."
+
+  - id: WAVE0-S3
+    title: "Активация tile / media-button <1 сек"
+    spec: specs/wave-0/S3-handsfree-activation.md
+    deps: []
+    status: ready
+    blocking: true
+    notes: ""
+
+  - id: WAVE0-S4
+    title: "RuStore Pay sandbox: подписка + рекуррент"
+    spec: specs/wave-0/S4-rustore-pay-sandbox.md
+    deps: []
+    status: ready
+    blocking: true
+    notes: "Требует RuStore dev-аккаунт + Pay sandbox (ONBOARDING-SECRETS; верификация ИП долгая — стартована заранее). Billing = tripwire; фискальный чек — допущение A9 на ратификацию в PR."
+
+  - id: WAVE0-S5
+    title: "STT-стриминг латентность <2 сек на 4G"
+    spec: specs/wave-0/S5-stt-streaming-latency.md
+    deps: []
+    status: ready
+    blocking: true
+    notes: "Требует Yandex SpeechKit ключ (ONBOARDING-SECRETS). Протокол — WebSocket default (A1)."
+
+  - id: WAVE0-S6
+    title: "Русский on-device wake-word «Эй, бадди» (оценочный)"
+    spec: specs/wave-0/S6-ru-wakeword.md
+    deps: []
+    status: ready
+    blocking: false
+    notes: "Не держит гейт Wave 0; исход определяет скоуп MVP-0.x. Движок — Vosk-keyword сначала (A3)."
+
+  # ── MVP-0 — «Поймай мысль» (заблокирован гейтом Wave 0: S1–S5 green ≥2 OEM) ──
+  - id: MVP0-F1
+    title: "Захват мысли (стриминговый STT)"
+    spec: specs/mvp-0/F1-thought-capture.md
+    deps: [WAVE0-S1, WAVE0-S2, WAVE0-S3, WAVE0-S5]
+    status: blocked
+    blocking: true
+    notes: "Критический путь ядра. Вкл. локальное inbox-хранилище (ADR-015: inbox-first, переезд из F5)."
+
+  - id: MVP0-F2
+    title: "ИИ-структурирование + классификация (LLM)"
+    spec: specs/mvp-0/F2-ai-structuring.md
+    deps: [MVP0-F1, WAVE0-S5]
+    status: blocked
+    blocking: true
+    notes: "AI-фаза: live-gold + golden dataset (50–100 реплик от фаундера, ONBOARDING-SECRETS §данные). GigaChat-2 Lite дефолт + сменный адаптер (реш. 3.2)."
+
+  - id: MVP0-F3
+    title: "Фиксация в действие (Share/Календарь/Telegram/Notes; Obsidian → should)"
+    spec: specs/mvp-0/F3-action-integrations.md
+    deps: [MVP0-F2]
+    status: blocked
+    blocking: true
+    notes: "Must-набор per реш. 2.3; Obsidian — SAF primary + URI fallback (реш. 2.4)."
+
+  - id: MVP0-F4
+    title: "Онбординг наушников"
+    spec: specs/mvp-0/F4-headphone-onboarding.md
+    deps: [WAVE0-S2, WAVE0-S3]
+    status: blocked
+    blocking: true
+    notes: "Параллелен критическому пути F1–F3."
+
+  - id: MVP0-F5
+    title: "Локальная база + история + поиск + sync"
+    spec: specs/mvp-0/F5-local-history-sync.md
+    deps: [MVP0-F2, MVP0-F3]
+    status: blocked
+    blocking: true
+    notes: "Локальное хранилище уехало в F1 (ADR-015); здесь — история/поиск/sync в RF-облако."
+
+  - id: MVP0-F6
+    title: "Офлайн-капчер (on-device STT)"
+    spec: specs/mvp-0/F6-offline-capture.md
+    deps: [MVP0-F1, WAVE0-S5]
+    status: blocked
+    blocking: true
+    notes: "После стабильного F1–F3. Движок — Vosk (A2), whisper.cpp fallback."
+
+  - id: MVP0-F7
+    title: "Голосовые команды в сессии"
+    spec: specs/mvp-0/F7-voice-commands.md
+    deps: [MVP0-F1, MVP0-F2, MVP0-F3]
+    status: blocked
+    blocking: true
+    notes: "AI-фаза (evaluator); wake-word-часть зависит от исхода S6. Переспрос при confidence <0.7 (реш. 3.3)."
+
+  # ── MVP-1 — стаб ──
+  - id: MVP1
+    title: "«Встречи/лекции» + биллинг (M1–M5)"
+    spec: specs/mvp-1/README.md
+    deps: [MVP0-F1, MVP0-F2, MVP0-F3, MVP0-F4, MVP0-F5, MVP0-F6, MVP0-F7]
+    status: stub
+    blocking: false
+    notes: "planner раскрывает JIT после гейта MVP-0 (activation >40%, W4-retention >25%)."
