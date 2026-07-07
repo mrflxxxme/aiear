@@ -5,7 +5,7 @@
 ## Жизненный цикл
 
 ```
-phase-ветка (phase/<PHASE>-<slug>)
+phase-ветка (`claude/*` — каноническая конвенция A8, conventions §7; `phase/*`/`wave/*` — deprecated)
    → коммиты (conventional, атомарные)
    → self-run + live-gold evidence-бандл собран (ADR-010)
    → verifier зелёный + architect AUDIT verdict ∈ {pass, pass-with-followups}
@@ -60,6 +60,8 @@ YAML-синтаксис ловится, но expression-ошибки (`secrets`/
 | 3 | новый экран/эндпоинт/фича | **явный аппрув** |
 | 4 | архитектура/security/billing/ФЗ/миграции/нативный фон | **явный аппрув + ADR-линк** |
 | 5 | хотфикс | аппрув в сессии |
+
+> ⚠️ **Rails-first (ADR-011 D1):** до активации auto-merge фаундером **все тиры (вкл. 1–2) проходят через founder-ack** — «авто-merge»/«ack» tier 1–2 приостановлены и описывают целевое состояние после активации (Wave-0-green + CI-secrets + рабочий evidence-контур, grill 2026-07-07 / 4.4).
 
 ## Шаблон тела PR
 

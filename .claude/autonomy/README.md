@@ -7,7 +7,8 @@ Source-of-truth автономного многофазного runner'а per [A
 По решению фаундера (интеграция 2026-07-03) стек построен, но **auto-merge не активирован**. Runner доводит фазу до зелёного и **ПАУЗИТ на фаундер-ack на КАЖДОМ PR** (как сегодняшние автономные сессии). Auto-merge включается, когда:
 
 1. **Wave 0 спайки S1–S5 зелёные** на ≥2 OEM (главный нативный риск снят реальными доказательствами), и
-2. **CI подключён к secrets** (ci-android FTL, ci-backend live, ci-security).
+2. **CI подключён к secrets** (ci-android FTL, ci-backend live, ci-security), и
+3. **evidence-контур реально работает** (grill 2026-07-07, решение 4.4): единый путь `specs/<wave>/evidence/<PHASE>/`, машиночитаемый DoD, непустой `manifest.json` обязателен для нативных/AI-фаз, `verify_evidence.py --require` фейлит при его отсутствии.
 
 Тогда фаундер флипает переключатель (см. BUILD-PLAN §Активация). До этого задняя растяжка (D2) всё равно активна как вторая линия.
 
@@ -43,23 +44,25 @@ Source-of-truth автономного многофазного runner'а per [A
 
 ## Evidence-протокол (D3) — как фаза доказывает local-only гейт
 
-GitHub CI не может гонять funded live-gold ru-STT/LLM, RuStore sandbox, on-device OEM survival, adversarial audit. Фаза, которая их гоняет, обязана оставить **закоммиченное, привязанное к коммиту доказательство**:
+GitHub CI не может гонять funded live-gold ru-STT/LLM, RuStore sandbox, on-device OEM survival, adversarial audit. Фаза, которая их гоняет, обязана оставить **закоммиченное, привязанное к коммиту доказательство** — **внутри человеческого evidence-бандла ADR-010** (единый путь evidence, grill 2026-07-07 / A5):
 
-1. Гейт-скрипт пишет `evidence/<gate>.json` по `evidence-schema.json`, с `head_sha` = точный коммит прогона и `verdict` = `PASS`/`FAIL`.
-2. Фаза объявляет требуемые гейты в `evidence/manifest.json`:
+1. Гейт-скрипт пишет `specs/<wave>/evidence/<PHASE>/<gate>.json` по `evidence-schema.json`, с `head_sha` = точный коммит прогона и `verdict` = `PASS`/`FAIL`.
+2. Фаза объявляет **ВСЕ** гейты своего DoD в `specs/<wave>/evidence/<PHASE>/manifest.json`:
    ```json
    { "phase": "WAVE0-S2", "required_gates": ["device_survival"] }
    ```
-3. Workflow `ci-evidence` гоняет `scripts/autonomy/verify_evidence.py`, ассертя, что каждый объявленный гейт существует, **свежий** (`head_sha` == PR head), и `PASS`. Иначе мёрж блокируется.
+3. Workflow `ci-evidence` гоняет `scripts/autonomy/verify_evidence.py` (discovery по `specs/*/evidence/*/manifest.json`), ассертя, что каждый объявленный гейт существует, **свежий** (`head_sha` == PR head), и `PASS`. Иначе мёрж блокируется. Для нативных/AI-фаз runner дополнительно гоняет верификатор с `--require`: **отсутствие/пустота манифеста = fail**, не «OK».
 
-**Freshness — зубы:** закоммитил ещё код после генерации evidence → tip уехал → evidence устарел → CI красный → перегенерь на финальном коммите. `evidence/` — ещё и post-hoc audit trail фаундера.
+**Freshness — зубы:** закоммитил ещё код после генерации evidence → tip уехал → evidence устарел → CI красный → перегенерь на финальном коммите. Evidence-бандл — ещё и post-hoc audit trail фаундера.
 
-**Нативный фон = обязательный `device_survival` (D3-native):** фаза, чей diff совпал с `native_background_permissions`, ОБЯЗАНА объявить `device_survival` и приложить реальный OEM-прогон (≥2 устройства, Xiaomi обяз.). Нет — `evidence_gap` → RUN-QUEUE `stuck`. Mock-зелёное не закрывает нативный риск (ADR-010).
+**Нативный фон = обязательный `device_survival` (D3-native, гибрид grill 2026-07-07):** фаза, чей diff совпал с `native_background_permissions`, ОБЯЗАНА объявить `device_survival` и приложить реальный OEM-прогон (≥2 устройства, Xiaomi обяз.). Нет device-evidence → фаза МОЖЕТ закрыться `pass-with-followups` и runner идёт дальше, но **merge PR в main блокирован** до device-evidence ИЛИ явного founder-ack на gap (RUN-QUEUE-запись). Mock-зелёное не закрывает нативный риск (ADR-010).
 
 ### Прогнать верификатор локально
 
 ```sh
-python scripts/autonomy/verify_evidence.py            # против `git rev-parse HEAD`
+python scripts/autonomy/verify_evidence.py                       # discovery: все specs/*/evidence/*/manifest.json
+python scripts/autonomy/verify_evidence.py --phase WAVE0-S2      # одна фаза
+python scripts/autonomy/verify_evidence.py --phase MVP0-F2 --require   # native/AI: нет манифеста = FAIL
 python scripts/autonomy/verify_evidence.py --head-sha <sha>
 ```
 

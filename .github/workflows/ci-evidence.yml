@@ -4,13 +4,17 @@ name: ci-evidence
 #
 # Local-only гейты, которые GitHub CI прогнать НЕ может (live-gold ru-STT/LLM с
 # funded ключами, RuStore Pay sandbox, on-device OEM survival, adversarial audit),
-# обязаны коммитить evidence-артефакт per gate под evidence/<gate>.json и объявить
-# требуемые гейты в evidence/manifest.json. Этот job ассертит, для каждого объявленного
-# гейта: артефакт существует, СВЕЖИЙ (записанный head_sha == PR head), verdict == PASS.
-# Любой промах блокирует мёрж.
+# обязаны коммитить evidence-артефакт per gate под specs/<wave>/evidence/<PHASE>/<gate>.json
+# и объявить требуемые гейты в specs/<wave>/evidence/<PHASE>/manifest.json — ВНУТРИ
+# человеческого evidence-бандла ADR-010 (единый путь evidence, grill 2026-07-07 / A5).
+# Верификатор в discovery-режиме обходит все specs/*/evidence/*/manifest.json. Этот job
+# ассертит, для каждого объявленного гейта: артефакт существует, СВЕЖИЙ (записанный
+# head_sha == PR head), verdict == PASS. Любой промах блокирует мёрж.
 #
-# Non-breaking: PR без evidence/manifest.json (т.е. без local-only гейтов) проходит
-# тривиально. Гейтятся только фазы, которые OPT-IN, закоммитив manifest.
+# Non-breaking: PR без единого manifest.json (т.е. без local-only гейтов) проходит
+# тривиально. НО для нативных/AI-фаз runner дополнительно гоняет верификатор с
+# --require (отсутствие/пустота манифеста = FAIL, ADR-011 D3-native) — «нет манифеста
+# → OK» допустим только для фаз без local-only гейтов.
 #
 # Верификатор stdlib-only → bare `python`, без venv, быстро.
 #
@@ -33,8 +37,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
-      # Для PR — checkout PR HEAD (не merge-коммита), чтобы evidence/*.json на диске
-      # был ровно тем, что закоммитил гейт, а его head_sha сравнивался с этим коммитом.
+      # Для PR — checkout PR HEAD (не merge-коммита), чтобы specs/*/evidence/*/*.json на
+      # диске был ровно тем, что закоммитил гейт, а его head_sha сравнивался с этим коммитом.
       # fetch-depth > 1: верификатор идёт first-parent мимо evidence-only tail-коммитов.
       - uses: actions/checkout@v4
         with:
