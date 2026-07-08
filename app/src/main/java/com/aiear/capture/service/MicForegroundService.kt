@@ -153,6 +153,9 @@ class MicForegroundService : LifecycleService() {
                 }
             }
         } catch (t: Throwable) {
+            // A cancelled job is a NORMAL stop (stopCapture/onDestroy), not an interruption:
+            // rethrow the cancellation instead of logging EXC — `finally` still beats STOPPED.
+            coroutineContext.ensureActive()
             // Broad on purpose: the interruption MUST be visible in the log (S1-AC3).
             heartbeat.beat(HeartbeatLogger.State.EXC, totalBytes)
             Log.e(HeartbeatLogger.TAG, "capture loop exception", t)
